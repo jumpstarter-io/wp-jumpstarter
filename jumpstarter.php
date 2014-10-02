@@ -74,20 +74,26 @@ function js_auth_verify($x, $z) {
     return ($h === $h_challenge);
 }
 
+function js_get_env() {
+    static $env = null;
+    if ($env === null) {
+        $env = json_decode(file_get_contents("/app/env.json"), true);
+        if (!is_array($env))
+            throw new Exception("failed to read js env");
+    }
+    return $env;
+}
+
 function js_auth_get_x() {
-    if (!file_exists("/app/env.json"))
-        return null;
-    $json = json_decode(file_get_contents("/app/env.json"), true);
+    $json = js_get_env();
     return $json["ident"]["container"]["session_key"];
 }
 
 add_action('login_init', function() {
-    // Attempt to login automatically via jumpstarter token at /wp-login.php?autologin=js.
-    if (!isset($_GET["autologin"]) || $_GET["autologin"] !== "js")
+    // Attempt to login automatically via jumpstarter token at /wp-login.php
+    if (!isset($_POST["jumpstarter-auth-token"]))
         return;
-    if (!isset($_POST['token']))
-        wp_die(__("Jumpstarter login failed: no login token in POST."));
-    $z = $_POST["token"];
+    $z = $_POST["jumpstarter-auth-token"];
     $x = js_auth_get_x();
     if (!js_auth_verify($x, $z))
         wp_die(__("Jumpstarter login failed: authorization failed (old token?)."));
@@ -103,9 +109,11 @@ add_action('login_init', function() {
 });
 
 add_action("login_footer", function () {
+    $json = js_get_env();
+    $login_url = $json["ident"]["user"]["login_url"];
     ?>
         <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
-            <a href="https://jumpstarter.io/reflected-login">Login with Jumpstarter</a>
+            <a href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
         </div>
         <script type="text/javascript">
             var jsl = document.getElementById("js-login");
