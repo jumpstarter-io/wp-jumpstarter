@@ -117,15 +117,6 @@ function js_install_wp() {
     js_log("running wordpress installer with name:[$user_name], email:[$user_email], password:[$user_password]");
     wp_install($blog_title, $user_name, $user_email, $public, $deprecated, $user_password, $language);
 
-    // Set capabilites.
-    js_log("setting capabilities of root user");
-    $super_admins = get_super_admins();
-    if (count($super_admins) != 1)
-        throw new Exception("unexpected super admin count after install");
-    $user_login = array_pop($super_admins);
-    $user = get_user_by('login', $user_login);
-    $user->remove_cap("switch_themes");
-
     // Silently activate all required plugins.
     // The developer should have removed plugins that should not be activated.
     js_log("activate plugins");
