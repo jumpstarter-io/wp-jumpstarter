@@ -14,7 +14,7 @@ The plugin should be placed in `/wp-content/plugins/jumpstarter`.
 This plugin has some expectations that must be fulfilled:
 
 * SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
-* The `js-init.php` script must be run succesfully (return exit code 0) before the HTTP port is opened and the Wordpress site can accept requests.
+* The `js-init.php` script must be run successfully (return exit code 0) before the HTTP port is opened and the Wordpress site can accept requests.
 * TLS must be used (HTTPS).
 * Plugin uploads and code changes must be disabled with `DISALLOW_FILE_MODS` in `wp-config.php`.
 * `DB_DIR` must be set to `"/app/state/wp-db"` in `wp-config.php`.
@@ -35,7 +35,7 @@ Install is done the following way:
    This allows installing in a second or less.
 3. Activating required plugins.
 4. Atomically move the database in place.
-   This allows the install to be indempotent.
+   This allows the install to be idempotent.
 5. Restart by execve'ing itself so environment sync can run.
 
 Environment sync is done the following way:
@@ -53,4 +53,4 @@ When the plugin itself is run by Wordpress after installing it does the followin
 - Prevents the `jumpstarter` and `sqlite-integration` plugins from being deactivated by anyone.
 - Sandboxes all users (even super admins) and overrides the `switch_themes` capability, disabling it. This allows no one to switch themes or see the installed themes. This is done by extending the `WP_User` class and overriding the current user from the `set_current_user` action.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
-- Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On succesful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
+- Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
