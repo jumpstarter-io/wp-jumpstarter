@@ -53,4 +53,4 @@ When the plugin itself is run by Wordpress after installing it does the followin
 - Prevents the `jumpstarter` and `sqlite-integration` plugins from being deactivated by anyone.
 - Sandboxes all users (even super admins) and overrides the `switch_themes` capability, disabling it. This allows no one to switch themes or see the installed themes. This is done by extending the `WP_User` class and overriding the current user from the `set_current_user` action.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
-- Handles login requests from Jumpstarther by authenticating posts of `jumpstarter-auth-token`. On succesful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
+- Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On succesful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
