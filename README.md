@@ -11,7 +11,7 @@ The plugin should be placed in `/wp-content/plugins/jumpstarter`.
 
 ### Preconditions
 
-This plugins has some expectations that must be fulfilled:
+This plugin has some expectations that must be fulfilled:
 
 * SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
 * The `js-init.php` script must be run succesfully (return exit code 0) before the HTTP port is opened and the Wordpress site can accept requests.
