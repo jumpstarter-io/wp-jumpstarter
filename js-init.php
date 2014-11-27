@@ -98,7 +98,7 @@ function js_install_wp() {
     $env = js_read_env();
     $is_assembly = !empty($env["ident"]["container"]["is_assembly"]);
     $blog_title = "My blog";
-    $user_name = empty($env["ident"]["user"]["name"])? "admin": strval($env["ident"]["user"]["name"]);
+    $user_name = "admin";
     $user_email = strval($env["ident"]["user"]["email"]);
     $public = true;
     $deprecated = null;
