@@ -33,7 +33,7 @@ Install is done the following way:
 1. Clean up previous failed or aborted installations.
 2. Install Wordpress to RAM (in `/tmp`) to get rid of waiting for disk sync.
    This allows installing in a second or less.
-3. Activating required plugins.
+3. Activating core plugins (`jumpstarter` and `sqlite-integration`).
 4. Atomically move the database in place.
    This allows the install to be idempotent.
 5. Restart by execve'ing itself so environment sync can run.
@@ -43,6 +43,7 @@ Environment sync is done the following way:
 1. Opening and parsing `/app/env.json`.
 2. Set the domain. On change the `wp_posts.post_content` column is migrated by find/replace and the `siteurl` and `home` options updated.
 3. Set the theme specified in `ident.app.extra_env.theme`.
+4. Activate the plugins specified in `ident.app.extra_env.plugins`.
 
 It also prints logging and error information to `stderr`.
 
@@ -50,7 +51,9 @@ It also prints logging and error information to `stderr`.
 
 When the plugin itself is run by Wordpress after installing it does the following:
 
-- Prevents the `jumpstarter` and `sqlite-integration` plugins from being deactivated by anyone.
+- Activates all app plugins defined by the env automatically, deactivates the rest.
+- Prevents users/admins from manually activating or deactivating plugins.
+- Hides the plugin page in the admin panel to avoid confusion for end users.
 - Sandboxes all users (even super admins) and overrides the `switch_themes` capability, disabling it. This allows no one to switch themes or see the installed themes. This is done by extending the `WP_User` class and overriding the current user from the `set_current_user` action.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
 - Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
