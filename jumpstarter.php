@@ -13,12 +13,20 @@
 if (!defined("ABSPATH"))
     die("-1");
 
-// Prevent deactivation of required plugins.
+// Prevent activation or deactivation of plugins.
+add_action("activate_plugin", function($plugin_key) {
+    wp_die(__("Plugin activation not allowed."));
+});
+
 add_action("deactivate_plugin", function($plugin_key) {
-    if ($plugin_key === "jumpstarter/jumpstarter.php"
-    || $plugin_key === "sqlite-integration/sqlite-integration.php") {
-        wp_die(__("This plugin cannot be deactivated!"));
-    }
+    wp_die(__("Plugin deactivation not allowed."));
+});
+
+// Hide plugins in menu since the page is pointless/confusing for end users. They have no permission to do anything anyway.
+// We still allow /wp-admin/plugins.php to be visited directly though for maintenance/debug purpuses.
+add_action("admin_menu", function() {
+    global $menu;
+    unset($menu[65]);
 });
 
 // Sandboxed Jumpstarter Wordpress user.

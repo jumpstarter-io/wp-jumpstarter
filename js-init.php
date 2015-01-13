@@ -40,6 +40,14 @@ function js_db_state_dir() {
     return "/app/state/wp-db";
 }
 
+// Returns core wp-jumpstarter plugins that can never be disabled.
+function js_core_plugins() {
+    return array(
+        "jumpstarter/jumpstarter.php",
+        "sqlite-integration/sqlite-integration.php",
+    );
+}
+
 function js_include_wp() {
     // Only include once.
     static $wp_included = false;
@@ -76,6 +84,14 @@ function js_include_wp() {
 
     // Wordpress is included now.
     $wp_included = true;
+}
+
+function js_activate_plugin($plugin_path) {
+    $result = activate_plugin($plugin_path, "", false, true);
+    if ($result !== null) {
+        js_log("failed to activate plugin!\n" . json_encode($result->get_error_messages()));
+        exit(1);
+    }
 }
 
 function js_install_wp() {
@@ -120,13 +136,9 @@ function js_install_wp() {
     // Silently activate all required plugins.
     // The developer should have removed plugins that should not be activated.
     js_log("activate plugins");
-    foreach (array("jumpstarter/jumpstarter.php", "sqlite-integration/sqlite-integration.php") as $plugin_key) {
-        js_log("activating plugin [$plugin_key]");
-        $result = activate_plugin($plugin_key, '', false, true);
-        if ($result !== null) {
-            js_log("failed to activate plugin!\n" . json_encode($result->get_error_messages()));
-            exit;
-        }
+    foreach (js_core_plugins() as $plugin_key) {
+        js_log("activating core plugin [$plugin_key]");
+        js_activate_plugin($plugin_key);
     }
 
     // Copy the database over to the state and atomically move it in place to mark wordpress as installed.
@@ -191,6 +203,15 @@ function js_get_env_theme($env) {
     return $env["ident"]["app"]["extra_env"]["theme"];
 }
 
+function js_get_env_plugins($env) {
+    if (!isset($env["ident"]["app"]["extra_env"]["plugins"]))
+        return array();
+    $plugins = $env["ident"]["app"]["extra_env"]["plugins"];
+    if (!is_array($plugins))
+        return array();
+    return $plugins;
+}
+
 function js_sync_wp_with_env() {
     js_log("starting env sync");
     $env = js_read_env();
@@ -205,7 +226,7 @@ function js_sync_wp_with_env() {
     } else {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
-    // Apply wordpress theme from env.
+    // Apply (sync) wordpress theme from env.
     $stylesheet = js_get_env_theme($env);
     if (is_string($stylesheet)) {
         js_log("setting theme [$stylesheet]");
@@ -215,6 +236,24 @@ function js_sync_wp_with_env() {
         switch_theme($theme->get_stylesheet());
     } else {
         js_log("no theme specified in env, nothing to set");
+    }
+    // Apply (sync) wordpress plugins from env.
+    $core_plugins = js_core_plugins();
+    $app_plugins = js_get_env_plugins($env);
+    $installed_plugins = get_plugins();
+    foreach ($installed_plugins as $i_plugin_path => $plugin) {
+        if (in_array($i_plugin_path, $core_plugins))
+            continue;
+        if (in_array($i_plugin_path, $app_plugins))
+            continue;
+        js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
+        deactivate_plugins(array($i_plugin_path), true);
+    }
+    foreach ($app_plugins as $app_plugin_path) {
+        if (!isset($installed_plugins[$app_plugin_path]))
+            throw new Exception("plugin to install [$app_plugin_path] not found!");
+        js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
+        js_activate_plugin($app_plugin_path);
     }
     js_log("completed env sync");
 }
