@@ -13,6 +13,8 @@
 if (!defined("ABSPATH"))
     die("-1");
 
+require_once "js_get_env.php";
+
 // Prevent activation or deactivation of plugins.
 add_action("activate_plugin", function($plugin_key) {
     wp_die(__("Plugin activation not allowed."));
@@ -80,16 +82,6 @@ function js_auth_verify($x, $z) {
 
     // Final authorization.
     return ($h === $h_challenge);
-}
-
-function js_get_env() {
-    static $env = null;
-    if ($env === null) {
-        $env = json_decode(file_get_contents("/app/env.json"), true);
-        if (!is_array($env))
-            throw new Exception("failed to read js env");
-    }
-    return $env;
 }
 
 function js_auth_get_x() {

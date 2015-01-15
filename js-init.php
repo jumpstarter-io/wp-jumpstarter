@@ -8,6 +8,8 @@
  * php /app/code/src/wp-content/mu-plugins/jumpstarter/js-auto-install.php
  */
 
+require_once "js_get_env.php";
+
 // Log to stderr.
 function js_log($msg) {
     fwrite(STDERR, "[js-init.php] $msg\n");
@@ -23,17 +25,6 @@ function js_eexec($cmd) {
         fwrite(STDERR, implode("\n", $out));
         throw new Exception("executing cmd [$cmd] failed");
     }
-}
-
-function js_read_env() {
-    $env = json_decode(file_get_contents("/app/env.json"), true);
-    if (!is_array($env))
-        throw new Exception("jumpstarter install failed: could not parse /app/env.json");
-    // It can be useful to test the app ident environment in assemblies.
-    $test_app_env_path = "/app/code/test-app-ident-env.json";
-    if (!isset($env["ident"]["app"]) && is_file($test_app_env_path))
-        $env["ident"]["app"] = json_decode(file_get_contents($test_app_env_path), true);
-    return $env;
 }
 
 function js_db_state_dir() {
@@ -111,7 +102,7 @@ function js_install_wp() {
     });
 
     // Read and prepare configuration for automatic install.
-    $env = js_read_env();
+    $env = js_get_env();
     $is_assembly = !empty($env["ident"]["container"]["is_assembly"]);
     $blog_title = "My blog";
     $user_name = "admin";
@@ -214,7 +205,7 @@ function js_get_env_plugins($env) {
 
 function js_sync_wp_with_env() {
     js_log("starting env sync");
-    $env = js_read_env();
+    $env = js_get_env();
     // Include wordpress definitions and config.
     js_include_wp();
     // Sync wordpress domain if it changed.
