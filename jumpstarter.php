@@ -15,14 +15,15 @@ if (!defined("ABSPATH"))
 
 require_once "js_get_env.php";
 
-// Prevent activation or deactivation of plugins.
-add_action("activate_plugin", function($plugin_key) {
-    wp_die(__("Plugin activation not allowed."));
-});
-
-add_action("deactivate_plugin", function($plugin_key) {
-    wp_die(__("Plugin deactivation not allowed."));
-});
+// Only allow activation or deactivation of plugins from cli.
+if (php_sapi_name() !== "cli") {
+    add_action("activate_plugin", function($plugin_key) {
+        wp_die(__("Plugin activation not allowed."));
+    });
+    add_action("deactivate_plugin", function($plugin_key) {
+        wp_die(__("Plugin deactivation not allowed."));
+    });
+}
 
 // Hide plugins in menu since the page is pointless/confusing for end users. They have no permission to do anything anyway.
 // We still allow /wp-admin/plugins.php to be visited directly though for maintenance/debug purpuses.
