@@ -259,8 +259,7 @@ function js_sync_wp_with_env() {
     js_log("syncing options with env");
     foreach (js_get_env_options($env) as $option => $value) {
         js_log("setting option [$option]: " . json_encode($value));
-        if (!update_option($option, $value))
-            js_log("WARNING: failed to set option [$option]");
+        update_option($option, $value);
     }
     js_log("completed env sync");
 }
