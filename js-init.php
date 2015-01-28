@@ -80,7 +80,7 @@ function js_include_wp() {
 function js_activate_plugin($plugin_path) {
     $result = activate_plugin($plugin_path, "", false, true);
     if ($result !== null) {
-        js_log("failed to activate plugin!\n" . json_encode($result->get_error_messages()));
+        js_log("failed to activate plugin [$plugin_path]: " . json_encode(array($result->get_error_messages(), $result->get_error_data())));
         exit(1);
     }
 }
