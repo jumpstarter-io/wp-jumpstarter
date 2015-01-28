@@ -203,6 +203,15 @@ function js_get_env_plugins($env) {
     return $plugins;
 }
 
+function js_get_env_options($env) {
+    if (!isset($env["ident"]["app"]["extra_env"]["options"]))
+        return array();
+    $options = $env["ident"]["app"]["extra_env"]["options"];
+    if (!is_array($options))
+        return array();
+    return $options;
+}
+
 function js_sync_wp_with_env() {
     js_log("starting env sync");
     $env = js_get_env();
@@ -245,6 +254,13 @@ function js_sync_wp_with_env() {
             throw new Exception("plugin to install [$app_plugin_path] not found!");
         js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
         js_activate_plugin($app_plugin_path);
+    }
+    // Apply (sync) wordpress options from env.
+    js_log("syncing options with env");
+    foreach (js_get_env_options($env) as $option => $value) {
+        js_log("setting option [$option]: " . json_encode($value));
+        if (!update_option($option, $value))
+            js_log("WARNING: failed to set option [$option]");
     }
     js_log("completed env sync");
 }
