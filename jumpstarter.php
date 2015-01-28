@@ -132,5 +132,10 @@ add_action("set_current_user", function() {
 });
 
 // Short-circuit URLs to emulate hard coded configuration.
-define("WP_SITEURL", get_option("siteurl"));
-define("WP_HOME", get_option("home"));
+// We need to check if these are already defined as the installer sets these
+// directly in js-init.php and later runs this script when the jumpstarter
+// plugin is activated.
+if (!defined("WP_SITEURL"))
+    define("WP_SITEURL", get_option("siteurl"));
+if (!defined("WP_HOME"))
+    define("WP_HOME", get_option("home"));
