@@ -114,7 +114,9 @@ add_action("login_footer", function () {
     $login_url = $json["ident"]["user"]["login_url"];
     ?>
         <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
-            <a href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
+            <a target="_parent" href="<?php _e($login_url) ?>">
+                Login with Jumpstarter
+            </a>
         </div>
         <script type="text/javascript">
             var jsl = document.getElementById("js-login");
