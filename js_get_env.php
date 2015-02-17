@@ -23,3 +23,23 @@ function js_get_env() {
     }
     return $env;
 }
+
+function js_get_env_value($path) {
+    static $cache = array();
+    $env = js_get_env();
+    if (isset($cache[$path]))
+        return $cache[$path];
+    $path_arr = explode(".", $path);
+    if (count($path_arr) == 0)
+        return NULL;
+    $obj = $env;
+    foreach($path_arr as $part) {
+        if (!isset($obj[$part])) {
+            $cache[$path] = NULL;
+            return NULL;
+        }
+        $obj = $obj[$part];
+    }
+    $cache[$path] = $obj;
+    return $obj;
+}

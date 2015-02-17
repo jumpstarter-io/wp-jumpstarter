@@ -15,22 +15,54 @@ if (!defined("ABSPATH"))
 
 require_once "js_get_env.php";
 
-// Only allow activation or deactivation of plugins from cli.
+function js_get_env_user_plugins_path() {
+    return "ident.app.extra_env.user_plugins";
+}
+
+function js_has_user_plugins() {
+    return isset(js_get_env_value(js_get_env_user_plugins_path()));
+}
+
+function js_get_user_plugins() {
+    $user_plugins = js_get_env_value(js_get_env_user_plugins_path());
+    return ($user_plugins !== NULL)? $user_plugins: array();
+}
+
+function js_plugin_allowed($plugin_key) {
+    return in_array($plugin_key, js_get_user_plugins());
+}
+
+// Only allow full access to plugin activation/deactivation from cli.
+// Allow activation/deactivation of plugins specified in the app env.
 if (php_sapi_name() !== "cli") {
     add_action("activate_plugin", function($plugin_key) {
-        wp_die(__("Plugin activation not allowed."));
+        if (!js_plugin_allowed($plugin_key))
+            wp_die(__("Plugin activation not allowed."));
     });
     add_action("deactivate_plugin", function($plugin_key) {
-        wp_die(__("Plugin deactivation not allowed."));
+        if (!js_plugin_allowed($plugin_key))
+            wp_die(__("Plugin deactivation not allowed."));
     });
 }
 
-// Hide plugins in menu since the page is pointless/confusing for end users. They have no permission to do anything anyway.
-// We still allow /wp-admin/plugins.php to be visited directly though for maintenance/debug purpuses.
-add_action("admin_menu", function() {
-    global $menu;
-    unset($menu[65]);
-});
+// If the app env has specified user plugins we show the plugins tab.
+if (js_has_user_plugins()) {
+    // Setup filter function for only showing the plugins specified in app env.
+    function filter_user_plugins($plugins) {
+        $user_plugins = js_get_user_plugins();
+        foreach($plugins as $plugin_key => $plugin) {
+            if (!in_array($plugin_key, $user_plugins))
+                unset($plugins[$plugin_key]);
+        }
+        return $plugins;
+    }
+    add_filter("all_plugins", "filter_user_plugins");
+} else {
+    add_action("admin_menu", function() {
+        global $menu;
+        unset($menu[65]);
+    });
+}
 
 // Sandboxed Jumpstarter Wordpress user.
 class JS_WP_User extends WP_User {
