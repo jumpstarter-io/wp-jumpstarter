@@ -31,6 +31,10 @@ function js_db_state_dir() {
     return "/app/state/wp-db";
 }
 
+function js_init_state_dir() {
+    return "/app/code/js-init-state";
+}
+
 // Returns core wp-jumpstarter plugins that can never be disabled.
 function js_core_plugins() {
     return array(
