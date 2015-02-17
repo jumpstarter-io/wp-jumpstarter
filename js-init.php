@@ -5,10 +5,10 @@
  * app is starting for the first time in an instance.
  *
  * You should pre_exec this script before starting the web server by running:
- * php /app/code/src/wp-content/mu-plugins/jumpstarter/js-auto-install.php
+ * php /app/code/src/wp-content/plugins/jumpstarter/js-init.php
  */
 
-require_once "js_get_env.php";
+require_once "js-env.php";
 
 // Log to stderr.
 function js_log($msg) {
@@ -125,11 +125,10 @@ function js_install_wp() {
     });
 
     // Read and prepare configuration for automatic install.
-    $env = js_get_env();
-    $is_assembly = !empty($env["ident"]["container"]["is_assembly"]);
+    $is_assembly = !empty(js_env_get_value("ident.container.is_assembly"));
     $blog_title = "My blog";
     $user_name = "admin";
-    $user_email = strval($env["ident"]["user"]["email"]);
+    $user_email = strval(js_env_get_value("ident.user.email"));
     $public = true;
     $deprecated = null;
     // Let wordpress generate a random password for instances, for assemblies, use "test".
@@ -137,7 +136,7 @@ function js_install_wp() {
     $language = null;
 
     // We pretend a user visited wordpress to install it through the generated domain.
-    define("WP_SITEURL", js_get_env_siteurl($env));
+    define("WP_SITEURL", js_env_get_siteurl());
     define("WP_INSTALLING", true);
 
     // Include wordpress definitions and config.
@@ -193,59 +192,13 @@ function js_update_siteurl($old_siteurl, $new_siteurl) {
     update_option("home", $new_siteurl);
 }
 
-function js_get_env_siteurl($env) {
-    // Primarily use top user domain if one is configured.
-    $user_domains = isset($env["settings"]["core"]["user-domains"])? $env["settings"]["core"]["user-domains"]: array();
-    if (is_array($user_domains) && count($user_domains) > 0) {
-        $preferred = reset($user_domains);
-        foreach ($user_domains as $domain) {
-            if ($domain["preferred"]) {
-                $preferred = $domain;
-                break;
-            }
-        }
-        if (empty($preferred["name"]))
-            throw new Exception("corrupt env: preferred domain has no name");
-        return ($domain["secure"]? "https": "http") . "://" . $preferred["name"];
-    }
-    // Fall back to auto domain (always encrypted).
-    if (empty($env["settings"]["core"]["auto-domain"]))
-        throw new Exception("auto-domain not found in env");
-    return "https://" . $env["settings"]["core"]["auto-domain"];
-}
-
-function js_get_env_theme($env) {
-    if (!isset($env["ident"]["app"]["extra_env"]["theme"]))
-        return null;
-    return $env["ident"]["app"]["extra_env"]["theme"];
-}
-
-function js_get_env_plugins($env) {
-    if (!isset($env["ident"]["app"]["extra_env"]["plugins"]))
-        return array();
-    $plugins = $env["ident"]["app"]["extra_env"]["plugins"];
-    if (!is_array($plugins))
-        return array();
-    return $plugins;
-}
-
-function js_get_env_options($env) {
-    if (!isset($env["ident"]["app"]["extra_env"]["options"]))
-        return array();
-    $options = $env["ident"]["app"]["extra_env"]["options"];
-    if (!is_array($options))
-        return array();
-    return $options;
-}
-
 function js_sync_wp_with_env() {
     js_log("starting env sync");
-    $env = js_get_env();
     // Include wordpress definitions and config.
     js_include_wp();
     // Sync wordpress domain if it changed.
     $wp_siteurl = get_option("siteurl");
-    $env_siteurl = js_get_env_siteurl($env);
+    $env_siteurl = js_env_get_siteurl();
     if ($wp_siteurl !== $env_siteurl) {
         js_log("siteurl change detected, migrating from [$wp_siteurl] to [$env_siteurl]");
         js_update_siteurl($wp_siteurl, $env_siteurl);
@@ -253,7 +206,7 @@ function js_sync_wp_with_env() {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
     // Apply (sync) wordpress theme from env.
-    $stylesheet = js_get_env_theme($env);
+    $stylesheet = js_env_get_theme();
     if (is_string($stylesheet)) {
         js_log("setting theme [$stylesheet]");
         $theme = wp_get_theme($stylesheet);
@@ -265,12 +218,15 @@ function js_sync_wp_with_env() {
     }
     // Apply (sync) wordpress plugins from env.
     $core_plugins = js_core_plugins();
-    $app_plugins = js_get_env_plugins($env);
+    $app_plugins = js_env_get_plugins();
+    $user_plugins = js_env_get_user_plugins();
     $installed_plugins = get_plugins();
     foreach ($installed_plugins as $i_plugin_path => $plugin) {
         if (in_array($i_plugin_path, $core_plugins))
             continue;
         if (in_array($i_plugin_path, $app_plugins))
+            continue;
+        if (in_array($i_plugin_path, $user_plugins))
             continue;
         js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
         deactivate_plugins(array($i_plugin_path), true);
@@ -283,7 +239,7 @@ function js_sync_wp_with_env() {
     }
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
-    foreach (js_get_env_options($env) as $option => $value) {
+    foreach (js_env_get_options() as $option => $value) {
         js_log("setting option [$option]: " . json_encode($value));
         update_option($option, $value);
     }
@@ -319,12 +275,11 @@ call_user_func(function() {
             js_log("installing wordpress from init state directory");
             // The init state dir should contain all we need to start wordpress. ie. a wp-db folder.
             js_eexec("cp -r $init_state_dir/* /app/state/");
-            $env = js_get_env();
             // Include wordpress definitions and config.
             js_include_wp();
             // Since we've installed a db copy we need to update the user's email.
             $admin_user = get_user_by("login", "admin");
-            wp_update_user(array("ID" => $admin_user->id, "user_email" => $env["ident"]["user"]["email"]));
+            wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email")));
             // Also set a random password for the admin account.
             wp_set_password(wp_generate_password(), $admin_user->id);
         } else {

@@ -3,7 +3,6 @@
  * Plugin Name: Jumpstarter
  * Plugin URI: https://github.com/jumpstarter-io/
  * Description: Wordpress Jumpstarter integration.
- * Version: 0.1
  * Author: Jumpstarter
  * Author URI: https://jumpstarter.io/
  * License: Public Domain
@@ -13,43 +12,26 @@
 if (!defined("ABSPATH"))
     die("-1");
 
-require_once "js_get_env.php";
-
-function js_get_env_user_plugins_path() {
-    return "ident.app.extra_env.user_plugins";
-}
-
-function js_has_user_plugins() {
-    return !empty(js_get_env_value(js_get_env_user_plugins_path()));
-}
-
-function js_get_user_plugins() {
-    $user_plugins = js_get_env_value(js_get_env_user_plugins_path());
-    return ($user_plugins !== NULL)? $user_plugins: array();
-}
-
-function js_plugin_allowed($plugin_key) {
-    return in_array($plugin_key, js_get_user_plugins());
-}
+require_once "js-env.php";
 
 // Only allow full access to plugin activation/deactivation from cli.
 // Allow activation/deactivation of plugins specified in the app env.
 if (php_sapi_name() !== "cli") {
     add_action("activate_plugin", function($plugin_key) {
-        if (!js_plugin_allowed($plugin_key))
+        if (!in_array($plugin_key, js_env_get_user_plugins()))
             wp_die(__("Plugin activation not allowed."));
     });
     add_action("deactivate_plugin", function($plugin_key) {
-        if (!js_plugin_allowed($plugin_key))
+        if (!in_array($plugin_key, js_env_get_user_plugins()))
             wp_die(__("Plugin deactivation not allowed."));
     });
 }
 
 // If the app env has specified user plugins we show the plugins tab.
-if (js_has_user_plugins()) {
+if (!empty(js_env_get_user_plugins())) {
     // Setup filter function for only showing the plugins specified in app env.
     function filter_user_plugins($plugins) {
-        $user_plugins = js_get_user_plugins();
+        $user_plugins = js_env_get_user_plugins();
         foreach($plugins as $plugin_key => $plugin) {
             if (!in_array($plugin_key, $user_plugins))
                 unset($plugins[$plugin_key]);
@@ -118,8 +100,7 @@ function js_auth_verify($x, $z) {
 }
 
 function js_auth_get_x() {
-    $json = js_get_env();
-    return $json["ident"]["container"]["session_key"];
+    return js_env_get_value("ident.container.session_key");
 }
 
 add_action('login_init', function() {
@@ -142,8 +123,7 @@ add_action('login_init', function() {
 });
 
 add_action("login_footer", function () {
-    $json = js_get_env();
-    $login_url = $json["ident"]["user"]["login_url"];
+    $login_url = js_env_get_value("ident.user.login_url");
     ?>
         <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
             <a target="_parent" href="<?php _e($login_url) ?>">
