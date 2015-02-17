@@ -298,10 +298,10 @@ call_user_func(function() {
         js_eexec("rm " . escapeshellarg($db_state_dir));
     }
 
-    // We don"t want to install if already installed.
     $throw_invalid_inode_type_fn = function() use ($db_state_dir) {
         throw new Exception("invalid inode type for path [$db_state_dir] (expected directory)");
     };
+    // We don't want to install if already installed.
     if (file_exists($db_state_dir)) {
         if (!is_dir($db_state_dir))
             $throw_invalid_inode_type_fn();
@@ -309,8 +309,25 @@ call_user_func(function() {
     } else {
         if (is_link($db_state_dir))
             $throw_invalid_inode_type_fn();
-        js_log("installing wordpress (first run)");
-        js_install_wp();
+        $init_state_dir = js_init_state_dir();
+        // Not installed but we've got a js-init-state directory.
+        if (file_exists($init_state_dir)) {
+            js_log("installing wordpress from init state directory");
+            // The init state dir should contain all we need to start wordpress. ie. a wp-db folder.
+            js_eexec("cp -r ".$init_state_dir."/* /app/state/");
+            $env = js_get_env();
+            // Include wordpress definitions and config.
+            js_include_wp();
+            // Since we've installed a db copy we need to update the user's email.
+            $admin_user = get_user_by("login", "admin");
+            wp_update_user(array("ID" => $admin_user->id, "user_email" => $env["ident"]["user"]["email"]));
+            // Also set a random password for the admin account.
+            wp_set_password(wp_generate_password(), $admin_user->id);
+        } else {
+            // Wordpress is not installed.
+            js_log("installing wordpress (first run)");
+            js_install_wp();
+        }
     }
 
     // Enforce wordpress configuration by environment.
