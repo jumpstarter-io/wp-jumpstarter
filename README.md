@@ -34,9 +34,10 @@ Install is done the following way:
 2. Install Wordpress to RAM (in `/tmp`) to get rid of waiting for disk sync.
    This allows installing in a second or less.
 3. Activating core plugins (`jumpstarter` and `sqlite-integration`).
-4. Atomically move the database in place.
+4. Run install hooks specified in `/app/code/js-install-hooks/*.php`.
+5. Atomically move the database in place.
    This allows the install to be idempotent.
-5. Restart by execve'ing itself so environment sync can run.
+6. Restart by execve'ing itself so environment sync can run.
 
 Environment sync is done the following way:
 
@@ -46,6 +47,31 @@ Environment sync is done the following way:
 4. Activate the plugins specified in `ident.app.extra_env.plugins`.
 
 It also prints logging and error information to `stderr`.
+
+Install hooks:
+
+If you neeed to do custom modifications to wordpress during the install phase you can take advantage of the install hook functionality provided by js-init. These hooks are executed at step 4 in the install and as such the hooks are run in the context of an initialized Wordpress instance. 
+
+To use install hooks place them in `/app/state/js-install-hooks`. A hook is implemented like this:
+
+```php
+    js_install_hook("Name of the hook", function() {
+	    // This is where the magic happens.
+	    // Remember to return true if the operation was successful.
+	    return true;
+    });
+```
+
+Alternative install:
+
+If your Wordpress app requires the database to be filled with example content it might be a good idea to speed up the process by running through the install before the user starts its instance. These are the steps needed to do this kind of install:
+
+1. Do a normal install by issuing `php /app/code/src/wp-content/plugins/jumpstarter/js-init.php`.
+2. Make the db/content modifications needed (this could be done with the install hooks).
+3. Create the directory `/app/code/js-init-state`.
+4. Copy the files needed from `/app/state/` to `/app/code/js-init-state/`.
+
+When the user starts a new instance of the app the init script will use the files inside `/app/code/js-init-state` and then update the wordpress database with the user's information.
 
 ## What the plugin does
 
