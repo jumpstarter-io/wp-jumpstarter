@@ -85,6 +85,25 @@ function js_activate_plugin($plugin_path) {
     }
 }
 
+function js_run_install_hooks() {
+    global $js_install_hooks;
+    $js_install_hooks = array();
+    function js_install_hook($name, $fn) {
+        global $js_install_hooks;
+        $js_install_hooks[] = array("name" => $name, "fn" => $fn);
+    }
+    foreach(glob("/app/code/js-install-hooks/*.php") as $file_path) {
+        require_once $file_path;
+    }
+    foreach($js_install_hooks as $ih_arr) {
+        js_log("running install hook: ".$ih_arr["name"]);
+        if (!$ih_arr["fn"]()) {
+            js_log("error running hook: ".$ih_arr["name"]);
+            exit(1);
+        }
+    }
+}
+
 function js_install_wp() {
     $db_state_dir = js_db_state_dir();
     // Create symlink to allow extremly fast ram based install.
@@ -131,6 +150,9 @@ function js_install_wp() {
         js_log("activating core plugin [$plugin_key]");
         js_activate_plugin($plugin_key);
     }
+
+    // Search for install hooks and run them.
+    js_run_install_hooks();
 
     // Copy the database over to the state and atomically move it in place to mark wordpress as installed.
     // We delete any old temporary db state to make the install indempotent.
