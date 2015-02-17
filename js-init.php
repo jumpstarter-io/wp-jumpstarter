@@ -100,9 +100,9 @@ function js_run_install_hooks() {
         require_once $file_path;
     }
     foreach($js_install_hooks as $ih_arr) {
-        js_log("running install hook: ".$ih_arr["name"]);
+        js_log("running install hook: $ih_arr[name]");
         if (!$ih_arr["fn"]()) {
-            js_log("error running hook: ".$ih_arr["name"]);
+            js_log("error running hook: $ih_arr[name]");
             exit(1);
         }
     }
@@ -314,11 +314,11 @@ call_user_func(function() {
         if (is_link($db_state_dir))
             $throw_invalid_inode_type_fn();
         $init_state_dir = js_init_state_dir();
-        // Not installed but we've got a js-init-state directory.
         if (file_exists($init_state_dir)) {
+            // Not installed but we've got a js-init-state directory.
             js_log("installing wordpress from init state directory");
             // The init state dir should contain all we need to start wordpress. ie. a wp-db folder.
-            js_eexec("cp -r ".$init_state_dir."/* /app/state/");
+            js_eexec("cp -r $init_state_dir/* /app/state/");
             $env = js_get_env();
             // Include wordpress definitions and config.
             js_include_wp();

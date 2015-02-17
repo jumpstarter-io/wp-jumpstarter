@@ -20,7 +20,7 @@ function js_get_env_user_plugins_path() {
 }
 
 function js_has_user_plugins() {
-    return isset(js_get_env_value(js_get_env_user_plugins_path()));
+    return !empty(js_get_env_value(js_get_env_user_plugins_path()));
 }
 
 function js_get_user_plugins() {
