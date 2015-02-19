@@ -138,6 +138,7 @@ function js_install_wp() {
     // We pretend a user visited wordpress to install it through the generated domain.
     define("WP_SITEURL", js_env_get_siteurl());
     define("WP_INSTALLING", true);
+    define("WP_ADMIN", true);
 
     // Include wordpress definitions and config.
     js_include_wp();
