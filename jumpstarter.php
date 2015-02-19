@@ -103,7 +103,17 @@ function js_auth_get_x() {
     return js_env_get_value("ident.container.session_key");
 }
 
+function js_route_reflected_login() {
+    $reflected_url = js_env_get_value("ident.user.login_url");
+    $ref = js_env_get_siteurl() . "/wp-login.php";
+    $redirect = "$reflected_url?ref=$ref";
+    wp_redirect($redirect);
+    exit;
+}
+
 add_action('login_init', function() {
+    if (isset($_GET["reflected-login"]))
+        return js_route_reflected_login();
     // Attempt to login automatically via jumpstarter token at /wp-login.php
     if (!isset($_POST["jumpstarter-auth-token"]))
         return;

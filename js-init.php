@@ -101,8 +101,13 @@ function js_run_install_hooks() {
     }
     foreach($js_install_hooks as $ih_arr) {
         js_log("running install hook: $ih_arr[name]");
-        if (!$ih_arr["fn"]()) {
-            js_log("error running hook: $ih_arr[name]");
+        try {
+            if (!$ih_arr["fn"]()) {
+                js_log("error running hook: $ih_arr[name]");
+                exit(1);
+            }
+        } catch (Exception $e) {
+            js_log($e->getMessage());
             exit(1);
         }
     }
