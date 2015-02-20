@@ -249,6 +249,27 @@ function js_sync_wp_with_env() {
         js_log("setting option [$option]: " . json_encode($value));
         update_option($option, $value);
     }
+    // Apply (sync) user information from env.
+    $admin_user = get_user_by("login", "admin");
+    js_log("updating user info");
+    $admin_name = "admin";
+    $env_user_name = empty(js_env_get_value("ident.user.name"))? $admin_name: js_env_get_value("ident.user.name");
+    $env_user_email = js_env_get_value("ident.user.email");
+    $user_nicename = ($admin_user->user_nicename !== $admin_name)? $admin_user->user_nicename: $env_user_name;
+    $user_displayname = ($admin_user->display_name !== $admin_name)? $admin_user->display_name: $env_user_name;
+    wp_update_user(array("ID" => $admin_user->id, "user_email" => $env_user_email, "user_nicename" => $user_nicename, "display_name" => $user_displayname));
+    $first_name = "first_name";
+    $last_name = "last_name";
+    $meta_first_name = get_user_meta($admin_user->ID, $first_name, true);
+    $meta_last_name = get_user_meta($admin_user->ID, $last_name, true);
+    $user_name_arr = explode(" ", $env_user_name);
+    if ($env_user_name !== $admin_name && empty($meta_first_name) && count($user_name_arr) > 0) {
+        update_user_meta($admin_user->ID, $first_name, reset($user_name_arr));
+    }
+    if ($env_user_name !== $admin_name && empty($meta_last_name) && count($user_name_arr) > 1) {
+        update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
+    }
+
     js_log("completed env sync");
 }
 
@@ -285,7 +306,10 @@ call_user_func(function() {
             js_include_wp();
             // Since we've installed a db copy we need to update the user's email.
             $admin_user = get_user_by("login", "admin");
-            wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email")));
+            $admin_name = "admin";
+            wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email"), "user_nicename" => $admin_name, "display_name" => $admin_name));
+            update_user_meta($admin_user->ID, "first_name", "");
+            update_user_meta($admin_user->ID, "last_name", "");
             // Also set a random password for the admin account.
             wp_set_password(wp_generate_password(), $admin_user->id);
         } else {
