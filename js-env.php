@@ -65,6 +65,14 @@ function js_env_get_user_plugins() {
     return js_env_get_val_or_array("ident.app.extra_env.user_plugins");
 }
 
+function js_env_get_disabled_capabilities() {
+    $dcaps = js_env_get_val_or_array("ident.app.extra_env.disabled_capabilities");
+    // We don't want the user to be able to switch themes.
+    // The theme is set in the app config.
+    array_push($dcaps, "switch_themes");
+    return $dcaps;
+}
+
 function js_env_get_siteurl() {
     // Primarily use top user domain if one is configured.
     $env_user_domains = js_env_get_val_or_array("settings.core.user-domains");

@@ -55,12 +55,8 @@ class JS_WP_User extends WP_User {
 
     public function has_cap($in) {
         $cap = (is_numeric($in)? $this->translate_level_to_cap($cap): $in);
-        switch ($cap) {
-        // We don't allow switching themes. The theme is defined
-        // by the app in jumpstarter and set when installing.
-        case "switch_themes":
+        if (in_array($cap, js_env_get_disabled_capabilities()))
             return false;
-        }
         return parent::has_cap($in);
     }
 }
@@ -111,11 +107,17 @@ function js_route_reflected_login() {
     exit;
 }
 
+function js_request_is($type) {
+    return strtolower($_SERVER["REQUEST_METHOD"]) == strtolower($type);
+}
+
 add_action('login_init', function() {
-    if (isset($_GET["reflected-login"]))
+    // On get request with "reflected-login" set we want to redirect
+    // the request to the js reflected-login page.
+    if (js_request_is("GET") && isset($_GET["reflected-login"]))
         return js_route_reflected_login();
     // Attempt to login automatically via jumpstarter token at /wp-login.php
-    if (!isset($_POST["jumpstarter-auth-token"]))
+    if (!js_request_is("POST") || !isset($_POST["jumpstarter-auth-token"]))
         return;
     $z = $_POST["jumpstarter-auth-token"];
     $x = js_auth_get_x();
