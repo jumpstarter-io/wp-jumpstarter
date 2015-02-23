@@ -31,12 +31,12 @@ function js_env_get_value($path) {
         return $cache[$path];
     $path_arr = explode(".", $path);
     if (count($path_arr) == 0)
-        return NULL;
+        return null;
     $obj = $env;
     foreach($path_arr as $part) {
         if (!isset($obj[$part])) {
-            $cache[$path] = NULL;
-            return NULL;
+            $cache[$path] = null;
+            return null;
         }
         $obj = $obj[$part];
     }
@@ -75,7 +75,7 @@ function js_env_get_disabled_capabilities() {
 
 function js_env_get_siteurl() {
     // Primarily use top user domain if one is configured.
-    $env_user_domains = js_env_get_val_or_array("settings.core.user-domains");
+    $user_domains = js_env_get_val_or_array("settings.core.user-domains");
     if (is_array($user_domains) && count($user_domains) > 0) {
         $preferred = reset($user_domains);
         foreach ($user_domains as $domain) {
