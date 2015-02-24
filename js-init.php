@@ -193,7 +193,12 @@ function js_install_wp() {
 
 function js_update_siteurl($old_siteurl, $new_siteurl) {
     global $wpdb;
+    // Update post contents.
     $wpdb->query($wpdb->prepare("UPDATE wp_posts SET post_content = replace(post_content, %s, %s)", $old_siteurl, $new_siteurl));
+    // Update post meta.
+    $wpdb->query($wpdb->prepare("UPDATE wp_postmeta SET meta_value = replace(meta_value, %s, %s)", $old_siteurl, $new_siteurl));
+    // Update options.
+    $wpdb->query($wpdb->prepare("UPDATE wp_options SET option_value= replace(option_value, %s, %s)", $old_siteurl, $new_siteurl));
     update_option("siteurl", $new_siteurl);
     update_option("home", $new_siteurl);
 }
