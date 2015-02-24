@@ -191,14 +191,60 @@ function js_install_wp() {
     exit(1);
 }
 
+function rec_replace_string($search_string, $replacement, $data, $serialized = false) {
+    try {
+        if (is_string($data) && ($unserialized = @unserialize($data)) !== false) {
+            $data = rec_replace_string($search_string, $replacement, $unserialized, true);
+        } elseif (is_array($data)) {
+            $tmp = array();
+            foreach($data as $key => $value) {
+                $tmp[$key] = rec_replace_string($search_string, $replacement, $value, false);
+            }
+            $data = $tmp;
+            unset($tmp);
+        } else {
+            if (is_string($data)) {
+                $data = str_replace($search_string, $replacement, $data);
+            }
+        }
+        if ($serialized) {
+            return serialize($data);
+        }
+    } catch (Exception $ex) {
+
+    }
+    return $data;
+}
+
 function js_update_siteurl($old_siteurl, $new_siteurl) {
     global $wpdb;
     // Update post contents.
-    $wpdb->query($wpdb->prepare("UPDATE wp_posts SET post_content = replace(post_content, %s, %s)", $old_siteurl, $new_siteurl));
+    $posts = $wpdb->get_results("SELECT ID, post_content FROM wp_posts");
+    foreach($posts as $post) {
+        $post_content = $post->post_content;
+        $modified = rec_replace_string($old_siteurl, $new_siteurl, $post_content);
+        if ($post_content !== $modified) {
+            $wpdb->query($wpdb->prepare("UPDATE wp_posts SET post_content = %s WHERE ID = %s", $modified, $post->ID));
+        }
+    }
     // Update post meta.
-    $wpdb->query($wpdb->prepare("UPDATE wp_postmeta SET meta_value = replace(meta_value, %s, %s)", $old_siteurl, $new_siteurl));
+    $post_metas = $wpdb->get_results("SELECT meta_id, meta_value FROM wp_postmeta");
+    foreach($post_metas as $post_meta) {
+        $meta_value = $post_meta->meta_value;
+        $modified = rec_replace_string($old_siteurl, $new_siteurl, $meta_value);
+        if ($meta_value !== $modified) {
+            $wpdb->query($wpdb->prepare("UPDATE wp_postmeta SET meta_value = %s WHERE meta_id = %s", $modified, $post_meta->meta_id));
+        }
+    }
     // Update options.
-    $wpdb->query($wpdb->prepare("UPDATE wp_options SET option_value= replace(option_value, %s, %s)", $old_siteurl, $new_siteurl));
+    $options = $wpdb->get_results("SELECT option_id, option_value FROM wp_options");
+    foreach($options as $option) {
+        $option_value = $option->option_value;
+        $modified = rec_replace_string($old_siteurl, $new_siteurl, $option_value);
+        if ($option_value !== $modified) {
+            $wpdb->query($wpdb->prepare("UPDATE wp_options SET option_value = %s WHERE option_id = %s", $modified, $option->option_id));
+        }
+    }
     update_option("siteurl", $new_siteurl);
     update_option("home", $new_siteurl);
 }
