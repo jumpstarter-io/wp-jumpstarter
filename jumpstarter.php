@@ -41,8 +41,7 @@ if (!empty(js_env_get_user_plugins())) {
     add_filter("all_plugins", "filter_user_plugins");
 } else {
     add_action("admin_menu", function() {
-        global $menu;
-        unset($menu[65]);
+        remove_menu_page("plugins.php");
     });
 }
 
