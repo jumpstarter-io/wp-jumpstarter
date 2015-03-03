@@ -253,6 +253,9 @@ function js_sync_wp_with_env() {
     js_log("starting env sync");
     // Include wordpress definitions and config.
     js_include_wp();
+    // Start transaction for atomic sync of env with wp.
+    global $wpdb;
+    $wpdb->query("begin");
     // Sync wordpress domain if it changed.
     $wp_siteurl = get_option("siteurl");
     $env_siteurl = js_env_get_siteurl();
@@ -319,6 +322,14 @@ function js_sync_wp_with_env() {
     }
     if ($env_user_name !== $admin_name && empty($meta_last_name) && count($user_name_arr) > 1) {
         update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
+    }
+
+    // Commit the env sync transaction.
+    $err_msg = $wpdb->query("commit");
+    if ($err_msg !== "") {
+        $wpdb->query("rollback");
+        js_log("failed to sync wp with env: " . $err_msg);
+        exit(1);
     }
 
     js_log("completed env sync");
