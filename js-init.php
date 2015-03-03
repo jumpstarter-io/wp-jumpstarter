@@ -8,6 +8,8 @@
  * php /app/code/src/wp-content/plugins/jumpstarter/js-init.php
  */
 
+define("JS_DEBUG", true);
+
 require_once "js-env.php";
 
 // Log to stderr.
@@ -253,9 +255,19 @@ function js_sync_wp_with_env() {
     js_log("starting env sync");
     // Include wordpress definitions and config.
     js_include_wp();
+    require_once dirname(__FILE__) . "/js-pdo.php";
     // Start transaction for atomic sync of env with wp.
+    unset($GLOBALS["wpdb"]);
+    $GLOBALS["wpdb"] = new JSPDODB();
+    // Initialize the new db connection with the wp table information.
+    wp_set_wpdb_vars();
     global $wpdb;
-    $wpdb->query("begin");
+    try {
+        $wpdb->begin();
+    } catch (Exception $e) {
+        js_log($e->getMessage());
+        exit(1);
+    }
     // Sync wordpress domain if it changed.
     $wp_siteurl = get_option("siteurl");
     $env_siteurl = js_env_get_siteurl();
@@ -323,15 +335,11 @@ function js_sync_wp_with_env() {
     if ($env_user_name !== $admin_name && empty($meta_last_name) && count($user_name_arr) > 1) {
         update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
     }
-
     // Commit the env sync transaction.
-    $err_msg = $wpdb->query("commit");
-    if ($err_msg !== "") {
-        $wpdb->query("rollback");
-        js_log("failed to sync wp with env: " . $err_msg);
+    if (!$wpdb->commit()) {
+        js_log("could not sync env with wp");
         exit(1);
     }
-
     js_log("completed env sync");
 }
 
