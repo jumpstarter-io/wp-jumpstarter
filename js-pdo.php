@@ -75,13 +75,9 @@ if (!class_exists("JSPDOEngine") && !class_exists("JSPDODB")) {
             } catch (PDOException $e) {
                 $reason = $e->getCode();
                 $message = $e->getMessage();
-                if (function_exists("js_log")) {
-                    js_log("JSPDODB::commit: transaction error: $reason, $message");
-                }
                 $this->dbh->rollBack();
-                return false;
+                throw new Exception("JSPDODB::commit: transaction error: $reason, $message");
             }
-            return true;
         }
 
     }
