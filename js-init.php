@@ -8,8 +8,6 @@
  * php /app/code/src/wp-content/plugins/jumpstarter/js-init.php
  */
 
-define("JS_DEBUG", true);
-
 require_once "jswp-env.php";
 
 // Log to stderr.
