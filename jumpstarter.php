@@ -12,7 +12,7 @@
 if (!defined("ABSPATH"))
     die("-1");
 
-require_once "js-env.php";
+require_once "jswp-env.php";
 
 // Only allow full access to plugin activation/deactivation from cli.
 // Allow activation/deactivation of plugins specified in the app env.

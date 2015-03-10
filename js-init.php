@@ -10,7 +10,7 @@
 
 define("JS_DEBUG", true);
 
-require_once "js-env.php";
+require_once "jswp-env.php";
 
 // Log to stderr.
 function js_log($msg) {
