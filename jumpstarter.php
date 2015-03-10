@@ -18,20 +18,20 @@ require_once "js-env.php";
 // Allow activation/deactivation of plugins specified in the app env.
 if (php_sapi_name() !== "cli") {
     add_action("activate_plugin", function($plugin_key) {
-        if (!in_array($plugin_key, js_env_get_user_plugins()))
+        if (!in_array($plugin_key, jswp_env_get_user_plugins()))
             wp_die(__("Plugin activation not allowed."));
     });
     add_action("deactivate_plugin", function($plugin_key) {
-        if (!in_array($plugin_key, js_env_get_user_plugins()))
+        if (!in_array($plugin_key, jswp_env_get_user_plugins()))
             wp_die(__("Plugin deactivation not allowed."));
     });
 }
 
 // If the app env has specified user plugins we show the plugins tab.
-if (!empty(js_env_get_user_plugins())) {
+if (!empty(jswp_env_get_user_plugins())) {
     // Setup filter function for only showing the plugins specified in app env.
     function filter_user_plugins($plugins) {
-        $user_plugins = js_env_get_user_plugins();
+        $user_plugins = jswp_env_get_user_plugins();
         foreach($plugins as $plugin_key => $plugin) {
             if (!in_array($plugin_key, $user_plugins))
                 unset($plugins[$plugin_key]);
@@ -54,7 +54,7 @@ class JS_WP_User extends WP_User {
 
     public function has_cap($in) {
         $cap = (is_numeric($in)? $this->translate_level_to_cap($cap): $in);
-        if (in_array($cap, js_env_get_disabled_capabilities()))
+        if (in_array($cap, jswp_env_get_disabled_capabilities()))
             return false;
         return parent::has_cap($in);
     }

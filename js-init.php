@@ -295,7 +295,7 @@ function js_sync_wp_with_env() {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
     // Apply (sync) wordpress theme from env.
-    $stylesheet = js_env_get_theme();
+    $stylesheet = jswp_env_get_theme();
     if (is_string($stylesheet)) {
         js_log("setting theme [$stylesheet]");
         $theme = wp_get_theme($stylesheet);
@@ -307,8 +307,8 @@ function js_sync_wp_with_env() {
     }
     // Apply (sync) wordpress plugins from env.
     $core_plugins = js_core_plugins();
-    $app_plugins = js_env_get_plugins();
-    $user_plugins = js_env_get_user_plugins();
+    $app_plugins = jswp_env_get_plugins();
+    $user_plugins = jswp_env_get_user_plugins();
     $installed_plugins = get_plugins();
     foreach ($installed_plugins as $i_plugin_path => $plugin) {
         if (in_array($i_plugin_path, $core_plugins))
@@ -328,7 +328,7 @@ function js_sync_wp_with_env() {
     }
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
-    foreach (js_env_get_options() as $option => $value) {
+    foreach (jswp_env_get_options() as $option => $value) {
         js_log("setting option [$option]: " . json_encode($value));
         update_option($option, $value);
     }
