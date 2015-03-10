@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * JS subclasses of the WP sqlite integration package to enable arbitrarily
+ * long transactions, ie: more than one statement.
+ *
+ * Tested with WP sqlite integration version 1.7.
+ */
+
 require_once dirname(__FILE__) . "/../sqlite-integration/pdoengine.class.php";
 require_once dirname(__FILE__) . "/../sqlite-integration/pdodb.class.php";
 

@@ -115,15 +115,43 @@ function js_run_install_hooks() {
     }
 }
 
-function js_install_wp() {
+function js_db_tmp_dir() {
+    return "/tmp/wp-db";
+}
+
+function js_install_init_tmp_db() {
     $db_state_dir = js_db_state_dir();
     // Create symlink to allow extremly fast ram based install.
-    $db_tmp_dir = "/tmp/wp-db";
+    //$db_tmp_dir = "/tmp/wp-db";
+    $db_tmp_dir = js_db_tmp_dir();
     if (file_exists($db_tmp_dir))
         js_eexec("rm -rf " . escapeshellarg($db_tmp_dir));
     js_eexec("mkdir " . escapeshellarg($db_tmp_dir));
     js_eexec("ln -s " . escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_state_dir));
+}
 
+function js_install_finalize_db() {
+    // Copy the database over to the state and atomically move it in place to mark wordpress as installed.
+    // We delete any old temporary db state to make the install indempotent.
+    js_log("copying installed database from ram to state");
+    $db_state_dir = js_db_state_dir();
+    $db_state_tmp_dir = "/app/state/wp-db.tmp";
+    $db_tmp_dir = js_db_tmp_dir();
+    if (file_exists($db_state_tmp_dir))
+        js_eexec("rm -rf " . escapeshellarg($db_state_tmp_dir));
+    js_eexec("cp -rp ". escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_state_tmp_dir));
+    js_eexec("rm -rf " . escapeshellarg($db_tmp_dir));
+    js_eexec("rm " . escapeshellarg($db_state_dir));
+    js_log("syncing data to state");
+    js_eexec("sync");
+    js_log("final atomic move");
+    js_eexec("mv ". escapeshellarg($db_state_tmp_dir) . " " . escapeshellarg($db_state_dir));
+    // Wait for sync before considering installation complete.
+    js_eexec("sync");
+}
+
+function js_install_wp() {
+    js_install_init_tmp_db();
     // When exiting before succesfull install, return bad error code.
     $install_ok = false;
     register_shutdown_function(function() use (&$install_ok) {
@@ -164,23 +192,7 @@ function js_install_wp() {
 
     // Search for install hooks and run them.
     js_run_install_hooks();
-
-    // Copy the database over to the state and atomically move it in place to mark wordpress as installed.
-    // We delete any old temporary db state to make the install indempotent.
-    js_log("copying installed database from ram to state");
-    $db_state_tmp_dir = "/app/state/wp-db.tmp";
-    if (file_exists($db_state_tmp_dir))
-        js_eexec("rm -rf " . escapeshellarg($db_state_tmp_dir));
-    js_eexec("cp -rp ". escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_state_tmp_dir));
-    js_eexec("rm -rf " . escapeshellarg($db_tmp_dir));
-    js_eexec("rm " . escapeshellarg($db_state_dir));
-    js_log("syncing data to state");
-    js_eexec("sync");
-    js_log("final atomic move");
-    js_eexec("mv ". escapeshellarg($db_state_tmp_dir) . " " . escapeshellarg($db_state_dir));
-
-    // Wait for sync before considering installation complete.
-    js_eexec("sync");
+    js_install_finalize_db();
     $install_ok = true;
     js_log("succesfully installed wordpress!");
 
@@ -251,16 +263,21 @@ function js_update_siteurl($old_siteurl, $new_siteurl) {
     update_option("home", $new_siteurl);
 }
 
-function js_sync_wp_with_env() {
-    js_log("starting env sync");
-    // Include wordpress definitions and config.
-    js_include_wp();
+function js_use_js_pdo() {
     require_once dirname(__FILE__) . "/js-pdo.php";
     // Start transaction for atomic sync of env with wp.
     unset($GLOBALS["wpdb"]);
     $GLOBALS["wpdb"] = new JSPDODB();
     // Initialize the new db connection with the wp table information.
     wp_set_wpdb_vars();
+}
+
+function js_sync_wp_with_env() {
+    js_log("starting env sync");
+    // Include wordpress definitions and config.
+    js_include_wp();
+    // Switch to using the JS pdo classes.
+    js_use_js_pdo();
     global $wpdb;
     try {
         $wpdb->begin();
@@ -336,7 +353,10 @@ function js_sync_wp_with_env() {
         update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
     }
     // Commit the env sync transaction.
-    if (!$wpdb->commit()) {
+    try {
+        $wpdb->commit();
+    } catch (Exception $e) {
+        js_log($e->getMessage());
         js_log("could not sync env with wp");
         exit(1);
     }
@@ -367,21 +387,36 @@ call_user_func(function() {
         if (is_link($db_state_dir))
             $throw_invalid_inode_type_fn();
         $init_state_dir = js_init_state_dir();
-        if (file_exists($init_state_dir)) {
+        $init_state_db_dir = "$init_state_dir/wp-db";
+        if (file_exists($init_state_dir) && file_exists($init_state_db_dir)) {
             // Not installed but we've got a js-init-state directory.
             js_log("installing wordpress from init state directory");
-            // The init state dir should contain all we need to start wordpress. ie. a wp-db folder.
-            js_eexec("cp -r $init_state_dir/* /app/state/");
-            // Include wordpress definitions and config.
+            js_install_init_tmp_db();
+            $db_state_dir = js_db_state_dir();
+            js_eexec("cp -r " . escapeshellarg("$init_state_db_dir/*") . " " . escapeshellarg("$db_state_dir/"));
             js_include_wp();
-            // Since we've installed a db copy we need to update the user's email.
-            $admin_user = get_user_by("login", "admin");
-            $admin_name = "admin";
-            wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email"), "user_nicename" => $admin_name, "display_name" => $admin_name));
-            update_user_meta($admin_user->ID, "first_name", "");
-            update_user_meta($admin_user->ID, "last_name", "");
-            // Also set a random password for the admin account.
-            wp_set_password(wp_generate_password(), $admin_user->id);
+            js_use_js_pdo();
+            try {
+                global $wpdb;
+                $wpdb->begin();
+                // Since we've installed a db copy we need to update the user's email.
+                $admin_user = get_user_by("login", "admin");
+                $admin_name = "admin";
+                wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email"), "user_nicename" => $admin_name, "display_name" => $admin_name));
+                update_user_meta($admin_user->ID, "first_name", "");
+                update_user_meta($admin_user->ID, "last_name", "");
+                // Also set a random password for the admin account.
+                wp_set_password(wp_generate_password(), $admin_user->id);
+                $wpdb->commit();
+            } catch (Exception $e) {
+                js_log($e->getMessage());
+                exit(1);
+            }
+            // Copy everything in the init-state dir that's not the database.
+            js_eexec("find " . escapeshellarg($init_state_dir) . " -maxdepth 1 -mindepth 1 -not -name wp-db -print0 | xargs -0 cp -r /app/state/");
+            // Make final atomic move of db.
+            js_install_finalize_db();
+            // need to wait here for install to be finished.
         } else {
             // Wordpress is not installed.
             js_log("installing wordpress (first run)");
