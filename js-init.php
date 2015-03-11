@@ -196,6 +196,16 @@ function js_install_finalize_db() {
     js_eexec("sync");
 }
 
+function js_restart_script() {
+    // Restart the CLI script to run the init phase again to test with an installed wordpress and sync env.
+    global $argv;
+    $execve_path = PHP_BINARY;
+    $execve_args = $argv;
+    js_log("****** restarting: [$execve_path], [" . implode(", ", $execve_args) . "] ******");
+    pcntl_exec($execve_path, $execve_args);
+    exit(1);
+}
+
 function js_install_wp() {
     js_install_init_tmp_db();
     // When exiting before succesfull install, return bad error code.
@@ -250,14 +260,8 @@ function js_install_wp() {
     js_install_finalize_db();
     $install_ok = true;
     js_log("succesfully installed wordpress!");
-
-    // Restart the CLI script to run the init phase again to test with an installed wordpress and sync env.
-    global $argv;
-    $execve_path = PHP_BINARY;
-    $execve_args = $argv;
-    js_log("****** restarting: [$execve_path], [" . implode(", ", $execve_args) . "] ******");
-    pcntl_exec($execve_path, $execve_args);
-    exit(1);
+    // Restart the js-init script.
+    js_restart_script();
 }
 
 function rec_replace_string($search_string, $replacement, $data, $serialized = false) {
@@ -319,12 +323,16 @@ function js_update_siteurl($old_siteurl, $new_siteurl) {
 }
 
 function js_use_js_pdo() {
+    static $using_js_pdo = false;
+    if ($using_js_pdo === true)
+        return;
     require_once dirname(__FILE__) . "/js-pdo.php";
     // Start transaction for atomic sync of env with wp.
     unset($GLOBALS["wpdb"]);
     $GLOBALS["wpdb"] = new JSPDODB();
     // Initialize the new db connection with the wp table information.
     wp_set_wpdb_vars();
+    $using_js_pdo = true;
 }
 
 function js_sync_wp_with_env() {
@@ -420,10 +428,11 @@ call_user_func(function() {
             js_log("installing wordpress from init state directory");
             js_install_init_tmp_db();
             $db_state_dir = js_db_state_dir();
-            js_eexec("cp -r " . escapeshellarg("$init_state_db_dir/*") . " " . escapeshellarg("$db_state_dir/"));
+            js_eexec("cp -r $init_state_db_dir/. " . escapeshellarg("$db_state_dir/"));
             js_include_wp();
             js_use_js_pdo();
             try {
+                js_log("syncing_data");
                 global $wpdb;
                 $wpdb->begin();
                 // Since we've installed a db copy we need to update the user's email.
@@ -440,10 +449,11 @@ call_user_func(function() {
                 exit(1);
             }
             // Copy everything in the init-state dir that's not the database.
-            js_eexec("find " . escapeshellarg($init_state_dir) . " -maxdepth 1 -mindepth 1 -not -name wp-db -print0 | xargs -0 cp -r /app/state/");
+            js_eexec("rsync -r --exclude 'wp-db' $init_state_dir/* /app/state/");
             // Make final atomic move of db.
             js_install_finalize_db();
-            // need to wait here for install to be finished.
+            // Restart the init script.
+            js_restart_script();
         } else {
             // Wordpress is not installed.
             js_log("installing wordpress (first run)");
