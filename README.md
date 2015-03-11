@@ -3,7 +3,7 @@ Wordpress Jumpstarter
 
 The official Jumpstarter plugin for Wordpress integration. It primarily allows you to sell Themes without writing any extra code for Wordpress.
 
-Read [the getting started guide here](https://github.com/jumpstarter-io/help/wiki/Getting-Started:-PHP-&-Wordpress).
+Read [the getting started guide here](https://github.com/jumpstarter-io/help/wiki/Getting-Started:-PHP-&-Wordpress-With-Jumpstarter-Console).
 
 ### How to install
 
@@ -26,7 +26,7 @@ This plugin has some expectations that must be fulfilled:
 When the `js-init.php` is run it does the following:
 
 1. Install wordpress if `/app/state/wp-db` does not exist.
-2. Sync the `env.json` environment with Wordpress.
+2. Sync the `/app/env.json` and `/app/code/wp-env.json` environments with Wordpress.
 
 Install is done the following way:
 
@@ -34,32 +34,34 @@ Install is done the following way:
 2. Install Wordpress to RAM (in `/tmp`) to get rid of waiting for disk sync.
    This allows installing in a second or less.
 3. Activating core plugins (`jumpstarter` and `sqlite-integration`).
-4. Run install hooks specified in `/app/code/js-install-hooks/*.php`.
-5. Atomically move the database in place.
-   This allows the install to be idempotent.
-6. Restart by execve'ing itself so environment sync can run.
+4. Activating plugins specified in `wp-env.json`.
+5. Setting the theme specified in `wp-env.json`.
+6. Run WordPress install hooks registered with `add_action("jumpstarter_install",...)`.
+7. Atomically move the database in place. This allows the install to be idempotent.
+8. Restart by execve'ing itself so environment sync can run.
 
 Environment sync is done the following way:
 
-1. Opening and parsing `/app/env.json`.
-2. Set the domain. On change the `wp_posts.post_content` column is migrated by find/replace and the `siteurl` and `home` options updated.
-3. Set the theme specified in `ident.app.extra_env.theme`.
-4. Activate the plugins specified in `ident.app.extra_env.plugins`.
+1. Opening and parsing `/app/code/wp-env.json`.
+2. If the siteurl has changed it performs a safe search/replace of $siteurl in `wp_posts`, `wp_postmeta` and `wp_options`.
+3. Set theme specified in `theme`.
+4. Activate the plugins specified in `plugins`.
+5. Update options specified in `options`.
+6. Opening and parsing `/app/env.json`.
+7. Update user details if they are admin default.
 
 It also prints logging and error information to `stderr`.
 
 Install hooks:
 
-If you neeed to do custom modifications to wordpress during the install phase you can take advantage of the install hook functionality provided by js-init. These hooks are executed at step 4 in the install and as such the hooks are run in the context of an initialized Wordpress instance. 
+If you need to do modifications to wordpress during the install phase you can take advantage of the install hook functionality provided by js-init. The registered hooks are executed at step 6 in the install process and as such they are run an the context of an initialized WordPress instance.
 
-To use install hooks place them in `/app/state/js-install-hooks`. A hook is implemented like this:
+To register an install hook add the following to your theme or plugin:
 
 ```php
-    js_install_hook("Name of the hook", function() {
-	    // This is where the magic happens.
-	    // Remember to return true if the operation was successful.
-	    return true;
-    });
+add_action("jumpstarter_install", function() {
+	// Do your installation modifications here.
+});
 ```
 
 Alternative install:
@@ -83,3 +85,27 @@ When the plugin itself is run by Wordpress after installing it does the followin
 - Sandboxes all users (even super admins) and overrides the `switch_themes` capability, disabling it. This allows no one to switch themes or see the installed themes. This is done by extending the `WP_User` class and overriding the current user from the `set_current_user` action.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
 - Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
+
+
+## wp-env.json
+
+WordPress settings that you want the Jumpstarter plugin to automatically sync with the install should be defined in `/app/code/wp-env.json`. The env file has the following format. If a field is omitted it will be ignored.
+
+
+```json
+{
+	"theme": "",
+	"plugins": [],
+	"user_plugins": [],
+	"disabled_capabilities": [],
+	"options": {}
+}
+```
+
+Field explanation:
+
+* `theme` - A string containing the name of the folder containing the theme in wp-content/themes/
+* `plugins` - A list of plugin files (["hello.php", "myplugin/plugin.php", ...]).
+* `user_plugins` - A list of plugins that the user can enable or disable at will.
+* `disabled_capabilities` - A list of WordPress capabilities. (["edit_posts", "edit_pages"]).
+* `options` - An object of Key -> Val.
