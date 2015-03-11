@@ -89,25 +89,24 @@ function js_activate_plugin($plugin_path) {
     }
 }
 
-function js_run_install_hooks() {
-    global $js_install_hooks;
-    $js_install_hooks = array();
-    function js_install_hook($name, $fn) {
-        global $js_install_hooks;
-        $js_install_hooks[] = array("name" => $name, "fn" => $fn);
+function js_run_install_scripts() {
+    global $js_install_scripts;
+    $js_install_scripts = array();
+    function js_install_script($name, $fn) {
+        $GLOBALS["js_install_scripts"][] = array("name" => $name, "fn" => $fn);
     }
-    foreach(glob("/app/code/js-install-hooks/*.php") as $file_path) {
+    foreach(glob("/app/code/js-install-scripts/*.php") as $file_path) {
         require_once $file_path;
     }
-    foreach($js_install_hooks as $ih_arr) {
-        js_log("running install hook: $ih_arr[name]");
+    foreach($js_install_scripts as $sc_arr) {
+        js_log("running install script: $sc_arr[name]");
         try {
-            if (!$ih_arr["fn"]()) {
-                js_log("error running hook: $ih_arr[name]");
+            if (!$sc_arr["fn"]()) {
+                js_log("error running script: $sc_arr[name]");
                 exit(1);
             }
-        } catch (Exception $e) {
-            js_log($e->getMessage());
+        } catch (Exception $ex) {
+            js_log($ex->getMessage());
             exit(1);
         }
     }
@@ -115,6 +114,55 @@ function js_run_install_hooks() {
 
 function js_db_tmp_dir() {
     return "/tmp/wp-db";
+}
+
+function js_sync_theme() {
+    $stylesheet = jswp_env_get_theme();
+    if (is_string($stylesheet)) {
+        js_log("setting theme [$stylesheet]");
+        $theme = wp_get_theme($stylesheet);
+        if (!$theme->exists())
+            throw new Exception("theme to install [$stylesheet] not found!");
+        switch_theme($theme->get_stylesheet());
+    } else {
+        js_log("no theme specified in env, nothing to set");
+    }
+}
+
+function js_load_theme_functions() {
+    $stylesheet = jswp_env_get_theme();
+    if (is_string($stylesheet)) {
+        $root = get_theme_root($stylesheet);
+        try {
+            include_once("$root/$stylesheet/functions.php");
+        } catch (Exception $ex) {
+            js_log($ex->getMessage());
+            js_log("could not include functions.php");
+        }
+    }
+}
+
+function js_sync_plugins() {
+    $core_plugins = js_core_plugins();
+    $app_plugins = jswp_env_get_plugins();
+    $user_plugins = jswp_env_get_user_plugins();
+    $installed_plugins = get_plugins();
+    foreach ($installed_plugins as $i_plugin_path => $plugin) {
+        if (in_array($i_plugin_path, $core_plugins))
+            continue;
+        if (in_array($i_plugin_path, $app_plugins))
+            continue;
+        if (in_array($i_plugin_path, $user_plugins))
+            continue;
+        js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
+        deactivate_plugins(array($i_plugin_path), true);
+    }
+    foreach ($app_plugins as $app_plugin_path) {
+        if (!isset($installed_plugins[$app_plugin_path]))
+            throw new Exception("plugin to install [$app_plugin_path] not found!");
+        js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
+        js_activate_plugin($app_plugin_path);
+    }
 }
 
 function js_install_init_tmp_db() {
@@ -188,8 +236,17 @@ function js_install_wp() {
         js_activate_plugin($plugin_key);
     }
 
-    // Search for install hooks and run them.
-    js_run_install_hooks();
+    // Search for install scripts and run them.
+    js_run_install_scripts();
+    // Activate plugins
+    js_sync_plugins();
+    // Set theme
+    js_sync_theme();
+    // Try to load the theme functions.php to enable running of install hook.
+    js_load_theme_functions();
+    // Trigger jumpstarter install hooks.
+    do_action("jumpstarter_install");
+
     js_install_finalize_db();
     $install_ok = true;
     js_log("succesfully installed wordpress!");
@@ -293,37 +350,9 @@ function js_sync_wp_with_env() {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
     // Apply (sync) wordpress theme from env.
-    $stylesheet = jswp_env_get_theme();
-    if (is_string($stylesheet)) {
-        js_log("setting theme [$stylesheet]");
-        $theme = wp_get_theme($stylesheet);
-        if (!$theme->exists())
-            throw new Exception("theme to install [$stylesheet] not found!");
-        switch_theme($theme->get_stylesheet());
-    } else {
-        js_log("no theme specified in env, nothing to set");
-    }
+    js_sync_theme();
     // Apply (sync) wordpress plugins from env.
-    $core_plugins = js_core_plugins();
-    $app_plugins = jswp_env_get_plugins();
-    $user_plugins = jswp_env_get_user_plugins();
-    $installed_plugins = get_plugins();
-    foreach ($installed_plugins as $i_plugin_path => $plugin) {
-        if (in_array($i_plugin_path, $core_plugins))
-            continue;
-        if (in_array($i_plugin_path, $app_plugins))
-            continue;
-        if (in_array($i_plugin_path, $user_plugins))
-            continue;
-        js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
-        deactivate_plugins(array($i_plugin_path), true);
-    }
-    foreach ($app_plugins as $app_plugin_path) {
-        if (!isset($installed_plugins[$app_plugin_path]))
-            throw new Exception("plugin to install [$app_plugin_path] not found!");
-        js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
-        js_activate_plugin($app_plugin_path);
-    }
+    js_sync_plugins();
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
     foreach (jswp_env_get_options() as $option => $value) {
