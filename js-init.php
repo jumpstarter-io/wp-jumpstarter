@@ -143,6 +143,7 @@ function js_load_theme_functions() {
 }
 
 function js_sync_plugins() {
+    wp_clean_plugins_cache();
     $core_plugins = js_core_plugins();
     $app_plugins = jswp_env_get_plugins();
     $user_plugins = jswp_env_get_user_plugins();
