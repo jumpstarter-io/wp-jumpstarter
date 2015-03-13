@@ -148,6 +148,7 @@ function js_sync_plugins() {
     $app_plugins = jswp_env_get_plugins();
     $user_plugins = jswp_env_get_user_plugins();
     $installed_plugins = get_plugins();
+    $active_plugins = get_option("active_plugins");
     foreach ($installed_plugins as $i_plugin_path => $plugin) {
         if (in_array($i_plugin_path, $core_plugins))
             continue;
@@ -161,6 +162,11 @@ function js_sync_plugins() {
     foreach ($app_plugins as $app_plugin_path) {
         if (!isset($installed_plugins[$app_plugin_path]))
             throw new Exception("plugin to install [$app_plugin_path] not found!");
+        if (!defined("WP_INSTALL") &&
+            in_array($app_plugin_path, $user_plugins) &&
+            !in_array($app_plugin_path, $active_plugins)) {
+            continue;
+        }
         js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
         js_activate_plugin($app_plugin_path);
     }
