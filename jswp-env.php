@@ -17,7 +17,7 @@ function jswp_get_env() {
     // Read environment and parse it.
     $env = json_decode(file_get_contents("/app/code/wp-env.json"), true);
     if (!is_array($env))
-        $env = null;
+        $env = array();
     // Store parsed environment in server cache.
     if (function_exists("apc_store")) {
         $key = "wp-env";
