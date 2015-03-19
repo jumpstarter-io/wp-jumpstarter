@@ -334,7 +334,6 @@ function js_use_js_pdo() {
     if ($using_js_pdo === true)
         return;
     require_once dirname(__FILE__) . "/js-pdo.php";
-    // Start transaction for atomic sync of env with wp.
     unset($GLOBALS["wpdb"]);
     $GLOBALS["wpdb"] = new JSPDODB();
     // Initialize the new db connection with the wp table information.
@@ -349,6 +348,9 @@ function js_sync_wp_with_env() {
     // Switch to using the JS pdo classes.
     js_use_js_pdo();
     global $wpdb;
+    // Start a transaction that spans all queries until explicit commit instead
+    // of the sqlite plugin's standard begin/commit around each query.
+    // This ensures that we don't store partial sync phases in case of script failure.
     try {
         $wpdb->begin();
     } catch (Exception $e) {
@@ -366,6 +368,8 @@ function js_sync_wp_with_env() {
     }
     // Apply (sync) wordpress theme from env.
     js_sync_theme();
+    // Allow for custom theme hooks to be run later on.
+    js_load_theme_functions();
     // Apply (sync) wordpress plugins from env.
     js_sync_plugins();
     // Apply (sync) wordpress options from env.
@@ -394,7 +398,9 @@ function js_sync_wp_with_env() {
     if ($env_user_name !== $admin_name && empty($meta_last_name) && count($user_name_arr) > 1) {
         update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
     }
-    // Commit the env sync transaction.
+    // Run theme/plugin hooks for env sync phase.
+    do_action("jumpstarter_sync_env");
+    // Commit all changes to db in one go.
     try {
         $wpdb->commit();
     } catch (Exception $e) {
@@ -406,7 +412,7 @@ function js_sync_wp_with_env() {
 }
 
 call_user_func(function() {
-    // We don"t want to run unless invoked by cli.
+    // We don't want to run unless invoked by cli.
     if (php_sapi_name() !== "cli")
         return;
 
@@ -441,6 +447,7 @@ call_user_func(function() {
             try {
                 js_log("syncing_data");
                 global $wpdb;
+                // Start transaction that spans all queries until explicit commit.
                 $wpdb->begin();
                 // Since we've installed a db copy we need to update the user's email.
                 $admin_user = get_user_by("login", "admin");
@@ -450,6 +457,7 @@ call_user_func(function() {
                 update_user_meta($admin_user->ID, "last_name", "");
                 // Also set a random password for the admin account.
                 wp_set_password(wp_generate_password(), $admin_user->id);
+
                 $wpdb->commit();
             } catch (Exception $e) {
                 js_log($e->getMessage());

@@ -49,6 +49,7 @@ Environment sync is done the following way:
 5. Update options specified in `options`.
 6. Opening and parsing `/app/env.json`.
 7. Update user details if they are admin default.
+8. Call the hook `jumpstarter_sync_env` to let themes/plugins modify db state depending on the env.
 
 It also prints logging and error information to `stderr`.
 
@@ -66,7 +67,7 @@ add_action("jumpstarter_install", function() {
 
 Alternative install:
 
-If your Wordpress app requires the database to be filled with example content it might be a good idea to speed up the process by running through the install before the user starts its instance. These are the steps needed to do this kind of install:
+If your Wordpress app requires the database to be filled with example content it might be a good idea to speed up the process by running through the install before users starts their instances. These are the steps needed to do this kind of install:
 
 1. Do a normal install by issuing `php /app/code/src/wp-content/plugins/jumpstarter/js-init.php`.
 2. Make the db/content modifications needed (this could be done with the install hooks).
