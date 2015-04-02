@@ -56,7 +56,7 @@ class JS_WP_User extends WP_User {
         $cap = (is_numeric($in)? $this->translate_level_to_cap($cap): $in);
         if (in_array($cap, jswp_env_get_disabled_capabilities()))
             return false;
-        return parent::has_cap($in);
+        return call_user_func_array(array($this, "parent::" . __FUNCTION__), func_get_args());
     }
 }
 
