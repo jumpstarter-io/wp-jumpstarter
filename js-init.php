@@ -127,6 +127,11 @@ function js_sync_theme() {
     } else {
         js_log("no theme specified in env, nothing to set");
     }
+    // For legacy reasons we define TEMPLATEPATH if not already defined
+    // to point at the root directory of the current theme.
+    if (!defined('TEMPLATEPATH')) {
+        define(TEMPLATEPATH, get_template_directory());
+    }
 }
 
 function js_load_theme_functions() {
