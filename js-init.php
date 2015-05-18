@@ -368,6 +368,8 @@ function js_sync_wp_with_env() {
     if ($wp_siteurl !== $env_siteurl) {
         js_log("siteurl change detected, migrating from [$wp_siteurl] to [$env_siteurl]");
         js_update_siteurl($wp_siteurl, $env_siteurl);
+        // Set previous siteurl to allow for changes in themes/plugins on "jumpstarter_sync_env" hook.
+        update_option("js_siteurl_old", $wp_siteurl);
     } else {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
@@ -405,6 +407,8 @@ function js_sync_wp_with_env() {
     }
     // Run theme/plugin hooks for env sync phase.
     do_action("jumpstarter_sync_env");
+    // Remove the siteurl option since it no longer should be used.
+    delete_option("js_siteurl_old");
     // Commit all changes to db in one go.
     try {
         $wpdb->commit();
