@@ -52,6 +52,9 @@ function js_include_wp() {
     // Include wordpress from CLI.
     define("ABSPATH", realpath(__DIR__ . "/../../../") . "/");
     $_SERVER['HTTPS'] = "on";
+    if (defined("WP_INSTALLING") && WP_INSTALLING === true) {
+        define("TEMPLATEPATH", ABSPATH . "wp-content/themes/" . jswp_env_get_theme());
+    }
     js_log("including wp-load.php");
     require_once(ABSPATH . "wp-load.php");
     js_log("including upgrade.php");
