@@ -304,37 +304,29 @@ function rec_replace_string($search_string, $replacement, $data, $serialized = f
     return $data;
 }
 
-function js_update_siteurl($old_siteurl, $new_siteurl) {
+function js_update_siteurl($old_siteurl, $new_siteurl, $table_name, $id_col, $cols) {
     global $wpdb;
-    // Update post contents.
-    $posts = $wpdb->get_results("SELECT ID, post_content FROM wp_posts");
-    foreach($posts as $post) {
-        $post_content = $post->post_content;
-        $modified = rec_replace_string($old_siteurl, $new_siteurl, $post_content);
-        if ($post_content !== $modified) {
-            $wpdb->query($wpdb->prepare("UPDATE wp_posts SET post_content = %s WHERE ID = %s", $modified, $post->ID));
+    $cols_str = implode(",", $cols);
+    $rows = $wpdb->get_results(sprintf("SELECT $id_col, %s from $table_name", implode(",", $cols)));
+    foreach($rows as $row) {
+        $modified_cols = array();
+        foreach($cols as $col) {
+            $value = $row->$col;
+            $modified_value = rec_replace_string($old_siteurl, $new_siteurl, $value);
+            if ($value !== $modified_value) {
+                $wpdb->query($wpdb->prepare("UPDATE $table_name SET $col = %s WHERE $id_col = %s", $modified_value, $row->$id_col));
+            }
         }
     }
-    // Update post meta.
-    $post_metas = $wpdb->get_results("SELECT meta_id, meta_value FROM wp_postmeta");
-    foreach($post_metas as $post_meta) {
-        $meta_value = $post_meta->meta_value;
-        $modified = rec_replace_string($old_siteurl, $new_siteurl, $meta_value);
-        if ($meta_value !== $modified) {
-            $wpdb->query($wpdb->prepare("UPDATE wp_postmeta SET meta_value = %s WHERE meta_id = %s", $modified, $post_meta->meta_id));
-        }
-    }
-    // Update options.
-    $options = $wpdb->get_results("SELECT option_id, option_value FROM wp_options");
-    foreach($options as $option) {
-        $option_value = $option->option_value;
-        $modified = rec_replace_string($old_siteurl, $new_siteurl, $option_value);
-        if ($option_value !== $modified) {
-            $wpdb->query($wpdb->prepare("UPDATE wp_options SET option_value = %s WHERE option_id = %s", $modified, $option->option_id));
-        }
-    }
-    update_option("siteurl", $new_siteurl);
-    update_option("home", $new_siteurl);
+}
+
+function js_update_siteurls($old_siteurl, $new_siteurl) {
+    // Update post contents with the new siteurl.
+    js_update_siteurl($old_siteurl, $new_siteurl, "wp_posts", "ID", array("post_content"));
+    // Update postmeta with the new siteurl.
+    js_update_siteurl($old_siteurl, $new_siteurl, "wp_postmeta", "meta_id", array("meta_value"));
+    // Update options with the new siteurl.
+    js_update_siteurl($old_siteurl, $new_siteurl, "wp_options", "option_id", array("option_value"));
 }
 
 function js_use_js_pdo() {
@@ -370,7 +362,7 @@ function js_sync_wp_with_env() {
     $env_siteurl = js_env_get_siteurl();
     if ($wp_siteurl !== $env_siteurl) {
         js_log("siteurl change detected, migrating from [$wp_siteurl] to [$env_siteurl]");
-        js_update_siteurl($wp_siteurl, $env_siteurl);
+        js_update_siteurls($wp_siteurl, $env_siteurl);
         // Set previous siteurl to allow for changes in themes/plugins on "jumpstarter_sync_env" hook.
         update_option("js_siteurl_old", $wp_siteurl);
     } else {
