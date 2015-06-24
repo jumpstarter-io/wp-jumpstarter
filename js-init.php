@@ -304,24 +304,23 @@ function rec_replace_string($search_string, $replacement, $data, $serialized = f
     return $data;
 }
 
-function js_update_siteurl($old_siteurl, $new_siteurl, $table_name, $id_col, $cols) {
+function js_update_siteurl($old_siteurl, $new_siteurl, $table_name, $id_column, $columns) {
     global $wpdb;
-    $cols_str = implode(",", $cols);
-    $rows = $wpdb->get_results(sprintf("SELECT $id_col, %s from $table_name", implode(",", $cols)));
-    foreach($rows as $row) {
-        $modified_cols = array();
-        foreach($cols as $col) {
-            $value = $row->$col;
+    $rows = $wpdb->get_results(sprintf("SELECT $id_column, %s from $table_name", implode(",", $columns)));
+    foreach ($rows as $row) {
+        foreach ($columns as $column) {
+            $value = $row->$column;
             $modified_value = rec_replace_string($old_siteurl, $new_siteurl, $value);
             if ($value !== $modified_value) {
-                $wpdb->query($wpdb->prepare("UPDATE $table_name SET $col = %s WHERE $id_col = %s", $modified_value, $row->$id_col));
+                $wpdb->query($wpdb->prepare("UPDATE $table_name SET $column = %s WHERE $id_column = %s", $modified_value, $row->$id_column));
             }
         }
     }
 }
 
 function js_update_siteurls($old_siteurl, $new_siteurl) {
-    // Update post contents with the new siteurl.
+    // Update post contents with the new siteurl. We do not update the GUID column as
+    // this would cause feed readers to think that the post is new when already read.
     js_update_siteurl($old_siteurl, $new_siteurl, "wp_posts", "ID", array("post_content"));
     // Update postmeta with the new siteurl.
     js_update_siteurl($old_siteurl, $new_siteurl, "wp_postmeta", "meta_id", array("meta_value"));
