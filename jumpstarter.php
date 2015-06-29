@@ -158,6 +158,27 @@ add_action("set_current_user", function() {
     $current_user = new JS_WP_User($current_user);
 });
 
+// Filter for correctly determining whether a url should be using HTTPS or HTTP.
+// Currently the WordPress engine replaces the url scheme if it detects that the
+// global $_SERVER['HTTPS'] is set to "on" or 1. This works fine for auto configured
+// js domains as they use https but fails when the user has added a non secure domain.
+function js_set_url_scheme($url, $scheme, $orig_scheme) {
+    // Get the siteurl configured for this container. This will include the correct
+    // scheme to use. If auto domain or configured secure domain this will use the
+    // https scheme.
+    $js_siteurl = js_env_get_siteurl();
+    $https_pattern = "/^https/";
+    // If the given url and the js siteurl both uses https then return as is.
+    if ($scheme === "https" && preg_match($https_pattern, $js_siteurl)) {
+        return $url;
+    }
+    // If a domain is added to Jumpstarter that isn't secure we need to transform the
+    // url into a http version.
+    return preg_replace($https_pattern, "http", $url);
+}
+
+add_filter("set_url_scheme", "js_set_url_scheme", 100, 3);
+
 // Short-circuit URLs to emulate hard coded configuration.
 // We need to check if these are already defined as the installer sets these
 // directly in js-init.php and later runs this script when the jumpstarter
