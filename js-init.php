@@ -38,8 +38,8 @@ function js_init_state_dir() {
 // Returns core wp-jumpstarter plugins that can never be disabled.
 function js_core_plugins() {
     return array(
-        "jumpstarter/jumpstarter.php",
         "sqlite-integration/sqlite-integration.php",
+        "jumpstarter/jumpstarter.php"
     );
 }
 
@@ -157,6 +157,27 @@ function js_load_theme_functions() {
     }
 }
 
+// This function is used to make sure that the Jumpstarter core plugins
+// gets loaded before any other plugins to make sure that url modifying filters
+// in the Jumpstarter plugin gets registered before WordPress internal functions
+// are called by 3d party plugins.
+function js_sync_plugins_load_order() {
+    js_log("syncing plugins load order");
+    function set_item_at_arr_pos(&$arr, $item, $pos) {
+        $item_pos = array_search($item, $arr);
+        if ($item_pos !== FALSE && $item_pos !== $pos) {
+            array_splice($arr, $item_pos, 1);
+            array_splice($arr, $pos, 0, array($item));
+        }
+    }
+    $active_plugins = get_option("active_plugins");
+    $idx = 0;
+    foreach (js_core_plugins() as $plugin) {
+        set_item_at_arr_pos($active_plugins, $plugin, $idx++);
+    }
+    update_option("active_plugins", $active_plugins);
+}
+
 function js_sync_plugins() {
     wp_clean_plugins_cache();
     $core_plugins = js_core_plugins();
@@ -270,9 +291,9 @@ function js_install_wp() {
 
     // Search for install scripts and run them.
     js_run_install_scripts();
-    // Activate plugins
+    // Activate plugins.
     js_sync_plugins();
-    // Set theme
+    // Set theme.
     js_sync_theme();
     // Try to load the theme functions.php to enable running of install hook.
     js_load_theme_functions();
@@ -378,6 +399,8 @@ function js_sync_wp_with_env() {
     js_sync_theme();
     // Allow for custom theme hooks to be run later on.
     js_load_theme_functions();
+    // Order the plugins list if needed.
+    js_sync_plugins_load_order();
     // Apply (sync) wordpress plugins from env.
     js_sync_plugins();
     // Apply (sync) wordpress options from env.
