@@ -138,15 +138,22 @@ function js_sync_theme() {
 }
 
 function js_load_theme_functions() {
-    $stylesheet = jswp_env_get_theme();
-    if (is_string($stylesheet)) {
-        $root = get_theme_root($stylesheet);
-        try {
-            include_once("$root/$stylesheet/functions.php");
-        } catch (Exception $ex) {
-            js_log($ex->getMessage());
-            js_log("could not include functions.php");
+    // If the theme we're using is a child theme we should try to load
+    // the parents functions.php first.
+    $stylesheet_dir = get_stylesheet_directory();
+    $template_dir = get_template_directory();
+    $functions_paths = array_map(function($dir_path) {
+        return "$dir_path/functions.php";
+    }, ($stylesheet_dir !== $template_dir) ? array($template_dir, $stylesheet_dir): array($stylesheet_dir));
+    try {
+        foreach ($functions_paths as $functions_path) {
+            if (file_exists($functions_path)) {
+                include_once($functions_path);
+            }
         }
+    } catch (Exception $ex) {
+        js_log($ex->getMessage());
+        js_log("could not include functions.php");
     }
 }
 
