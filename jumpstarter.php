@@ -60,44 +60,6 @@ class JS_WP_User extends WP_User {
     }
 }
 
-// Validates the cookie z with the session id x.
-function js_auth_verify($x, $z) {
-    // Sanity check input.
-    if (!is_string($z) || !is_string($x))
-        return false;
-    if (strlen($z) != 144 || strlen($x) != 64)
-        return false;
-    if (!ctype_xdigit($z) || !ctype_xdigit($x))
-        return false;
-
-    // Decode all cookie parameters.
-    $z_raw = hex2bin($z);
-    $e_raw = substr($z_raw, 0, 8);
-    $e = implode(unpack("N", substr($e_raw, 4, 4))); // expire time
-    $y = substr($z_raw, 8, 32); // random salt
-    $h = substr($z_raw, 40); // sha256 hash signature
-
-    // Cookie must not have expired.
-    if ($e < time())
-        return false;
-
-    // Calculate the signature we expect.
-    $h_challenge = hash("sha256", ($e_raw . $y . hex2bin($x)), true);
-
-    // Sanity check before comparing.
-    if (!is_string($h) || strlen($h) != 32)
-        return false;
-    if (!is_string($h_challenge) || strlen($h_challenge) != 32)
-        return false;
-
-    // Final authorization.
-    return ($h === $h_challenge);
-}
-
-function js_auth_get_x() {
-    return js_env_get_value("ident.container.session_key");
-}
-
 function js_route_reflected_login() {
     $reflected_url = js_env_get_value("ident.user.login_url");
     $ref = js_env_get_siteurl() . "/wp-login.php";
@@ -119,8 +81,7 @@ add_action('login_init', function() {
     if (!js_request_is("POST") || !isset($_POST["jumpstarter-auth-token"]))
         return;
     $z = $_POST["jumpstarter-auth-token"];
-    $x = js_auth_get_x();
-    if (!js_auth_verify($x, $z))
+    if (!js_env_token_auth_verify($z))
         wp_die(__("Jumpstarter login failed: authorization failed (old token?)."));
     foreach (get_super_admins() as $admin_login) {
         $user = get_user_by('login', $admin_login);
