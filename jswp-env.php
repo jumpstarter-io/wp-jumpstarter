@@ -47,6 +47,7 @@ function jswp_env_get_disabled_capabilities() {
     // The theme is set in the app config.
     if (!jswp_env_get_value("override.switch_theme") && !jswp_env_get_value("override.allow_all"))
         array_push($dcaps, "switch_themes");
+    array_push($dcaps, "update_core");
     return $dcaps;
 }
 
@@ -55,8 +56,8 @@ function jswp_env_is_capability_allowed($cap) {
     if (isset($disabled_caps[$cap]))
         return false;
     $overrides = jswp_env_get_val_or_array("override");
-    if (isset($overrides[$cap]) && $overrides[$cap] === true)
-        return true;
+    if (isset($overrides[$cap]))
+        return $overrides[$cap] === true;
     if (isset($overrides["allow_all"]) && $overrides["allow_all"] === true)
         return true;
     return false;
