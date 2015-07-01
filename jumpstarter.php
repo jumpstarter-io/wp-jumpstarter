@@ -18,14 +18,25 @@ require_once "jswp-env.php";
 // Allow activation/deactivation of plugins specified in the app env.
 if (php_sapi_name() !== "cli") {
     add_action("activate_plugin", function($plugin_key) {
-        if (!in_array($plugin_key, jswp_env_get_user_plugins()))
+        if (in_array($plugin_key, jswp_env_core_plugins()) || (!in_array($plugin_key, jswp_env_get_user_plugins()) && !jswp_env_is_capability_allowed("activate_plugins")))
             wp_die(__("Plugin activation not allowed."));
     });
     add_action("deactivate_plugin", function($plugin_key) {
-        if (!in_array($plugin_key, jswp_env_get_user_plugins()))
+        if (in_array($plugin_key, jswp_env_core_plugins()) || (!in_array($plugin_key, jswp_env_get_user_plugins()) && !jswp_env_is_capability_allowed("deactivate_plugins")))
             wp_die(__("Plugin deactivation not allowed."));
     });
 }
+
+// We do not want to enable users to disable the Jumpstarter core plugins
+// even if plugin activation/deactivation is enabled.
+function filter_core_plugins($plugins) {
+    $core_plugins = jswp_env_core_plugins();
+    foreach ($core_plugins as $core_plugin) {
+        unset($plugins[$core_plugin]);
+    }
+    return $plugins;
+}
+add_filter("all_plugins", "filter_core_plugins");
 
 // If the app env has specified user plugins we show the plugins tab.
 if (!empty(jswp_env_get_user_plugins())) {
@@ -41,7 +52,8 @@ if (!empty(jswp_env_get_user_plugins())) {
     add_filter("all_plugins", "filter_user_plugins");
 } else {
     add_action("admin_menu", function() {
-        remove_menu_page("plugins.php");
+        if (!jswp_env_is_capability_allowed("show_plugins"))
+            remove_menu_page("plugins.php");
     });
 }
 
@@ -56,6 +68,8 @@ class JS_WP_User extends WP_User {
         $cap = (is_numeric($in)? $this->translate_level_to_cap($cap): $in);
         if (in_array($cap, jswp_env_get_disabled_capabilities()))
             return false;
+        if (jswp_env_is_capability_allowed($cap))
+            return true;
         return call_user_func_array(array($this, "parent::" . __FUNCTION__), func_get_args());
     }
 }

@@ -35,14 +35,6 @@ function js_init_state_dir() {
     return "/app/code/js-init-state";
 }
 
-// Returns core wp-jumpstarter plugins that can never be disabled.
-function js_core_plugins() {
-    return array(
-        "sqlite-integration/sqlite-integration.php",
-        "jumpstarter/jumpstarter.php"
-    );
-}
-
 function js_include_wp() {
     // Only include once.
     static $wp_included = false;
@@ -50,7 +42,8 @@ function js_include_wp() {
         return;
 
     // Include wordpress from CLI.
-    define("ABSPATH", realpath(__DIR__ . "/../../../") . "/");
+    //define("ABSPATH", realpath(__DIR__ . "/../../../") . "/");
+    define("ABSPATH", "/app/code/src/");
     $_SERVER['HTTPS'] = "on";
     if (defined("WP_INSTALLING") && WP_INSTALLING === true) {
         define("TEMPLATEPATH", ABSPATH . "wp-content/themes/" . jswp_env_get_theme());
@@ -120,12 +113,17 @@ function js_db_tmp_dir() {
 }
 
 function js_sync_theme() {
-    $stylesheet = jswp_env_get_theme();
-    if (is_string($stylesheet)) {
-        js_log("setting theme [$stylesheet]");
-        $theme = wp_get_theme($stylesheet);
+    $stylesheet = get_option("stylesheet");
+    $env_stylesheet = jswp_env_get_theme();
+    if (!defined("WP_INSTALLING") && $stylesheet !== $env_stylesheet && jswp_env_is_capability_allowed("switch_theme")) {
+        js_log("using user defined theme [$stylesheet]");
+        return;
+    }
+    if (is_string($env_stylesheet)) {
+        js_log("setting theme [$env_stylesheet]");
+        $theme = wp_get_theme($env_stylesheet);
         if (!$theme->exists())
-            throw new Exception("theme to install [$stylesheet] not found!");
+            throw new Exception("theme to install [$env_stylesheet] not found!");
         switch_theme($theme->get_stylesheet());
     } else {
         js_log("no theme specified in env, nothing to set");
@@ -172,7 +170,7 @@ function js_sync_plugins_load_order() {
     }
     $active_plugins = get_option("active_plugins");
     $idx = 0;
-    foreach (js_core_plugins() as $plugin) {
+    foreach (jswp_env_core_plugins() as $plugin) {
         set_item_at_arr_pos($active_plugins, $plugin, $idx++);
     }
     update_option("active_plugins", $active_plugins);
@@ -180,7 +178,7 @@ function js_sync_plugins_load_order() {
 
 function js_sync_plugins() {
     wp_clean_plugins_cache();
-    $core_plugins = js_core_plugins();
+    $core_plugins = jswp_env_core_plugins();
     $app_plugins = jswp_env_get_plugins();
     $user_plugins = jswp_env_get_user_plugins();
     $installed_plugins = get_plugins();
@@ -191,6 +189,8 @@ function js_sync_plugins() {
         if (in_array($i_plugin_path, $app_plugins))
             continue;
         if (in_array($i_plugin_path, $user_plugins))
+            continue;
+        if (jswp_env_is_capability_allowed("activate_plugins"))
             continue;
         js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
         deactivate_plugins(array($i_plugin_path), true);
@@ -284,7 +284,7 @@ function js_install_wp() {
     // Silently activate all required plugins.
     // The developer should have removed plugins that should not be activated.
     js_log("activate plugins");
-    foreach (js_core_plugins() as $plugin_key) {
+    foreach (jswp_env_core_plugins() as $plugin_key) {
         js_log("activating core plugin [$plugin_key]");
         js_activate_plugin($plugin_key);
     }
