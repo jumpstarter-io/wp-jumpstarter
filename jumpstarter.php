@@ -58,7 +58,7 @@ if (!empty(jswp_env_get_user_plugins())) {
 }
 
 add_action("admin_menu", function() {
-    // Always remove update core
+    // Always remove update core.
     remove_submenu_page("index.php", "update-core.php");
 });
 
@@ -167,3 +167,11 @@ if (!defined("WP_SITEURL"))
     define("WP_SITEURL", get_option("siteurl"));
 if (!defined("WP_HOME"))
     define("WP_HOME", get_option("home"));
+
+// Deny access to /wp-admin/update-core.php as that page may list updates for
+// core plugins.
+function js_validate_request_uri() {
+    if (strpos($_SERVER["REQUEST_URI"], "/wp-admin/update-core.php") !== FALSE)
+        wp_die(_("This page is disabled."));
+}
+call_user_func("js_validate_request_uri");
