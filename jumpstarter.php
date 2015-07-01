@@ -57,6 +57,11 @@ if (!empty(jswp_env_get_user_plugins())) {
     });
 }
 
+add_action("admin_menu", function() {
+    // Always remove update core
+    remove_submenu_page("index.php", "update-core.php");
+});
+
 // Sandboxed Jumpstarter Wordpress user.
 class JS_WP_User extends WP_User {
     public function __construct(WP_User $raw_wp_user) {
