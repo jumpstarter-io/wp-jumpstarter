@@ -62,6 +62,13 @@ add_action("admin_menu", function() {
     remove_submenu_page("index.php", "update-core.php");
 });
 
+add_action("wp_before_admin_bar_render", function() {
+    // Remove the update link in the admin menu as this link leads
+    // to /wp-admin/update-core.php.
+    global $wp_admin_bar;
+    $wp_admin_bar->remove_menu("updates");
+});
+
 // Sandboxed Jumpstarter Wordpress user.
 class JS_WP_User extends WP_User {
     public function __construct(WP_User $raw_wp_user) {
