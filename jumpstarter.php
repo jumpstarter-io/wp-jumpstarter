@@ -69,6 +69,20 @@ add_action("wp_before_admin_bar_render", function() {
     $wp_admin_bar->remove_menu("updates");
 });
 
+// Add a filter for outgoing requests that prevents WordPress from checking for
+// updates for our core plugins.
+function js_prevent_update_check_of_core_plugins($r, $url) {
+    if (strpos($url, "api.wordpress.org/plugins/update-check") !== FALSE) {
+        $update_plugins = json_decode($r["body"]["plugins"], true);
+        foreach (jswp_env_core_plugins() as $plugin) {
+            unset($update_plugins["plugins"][$plugin]);
+        }
+        $r["body"]["plugins"] = json_encode($update_plugins);
+    }
+    return $r;
+}
+add_filter("http_request_args", "js_prevent_update_check_of_core_plugins", 10, 2);
+
 // Sandboxed Jumpstarter Wordpress user.
 class JS_WP_User extends WP_User {
     public function __construct(WP_User $raw_wp_user) {
