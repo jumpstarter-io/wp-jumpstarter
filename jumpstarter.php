@@ -189,10 +189,22 @@ if (!defined("WP_SITEURL"))
 if (!defined("WP_HOME"))
     define("WP_HOME", get_option("home"));
 
-// Deny access to /wp-admin/update-core.php as that page may list updates for
-// core plugins.
 function js_validate_request_uri() {
+    // Deny access to /wp-admin/update-core.php as that page may list updates for
+    // core plugins.
     if (strpos($_SERVER["REQUEST_URI"], "/wp-admin/update-core.php") !== FALSE)
         wp_die(_("This page is disabled."));
+    // Make sure that we don't uninstall the default theme that is specified in
+    // the wp-env.json file.
+    if (strpos($_SERVER["REQUEST_URI"], "/wp-admin/themes.php") !== FALSE && $_GET["action"] === "delete") {
+        if (!isset($_GET["stylesheet"]))
+            return;
+        $theme = wp_get_theme($_GET["stylesheet"]);
+        if (!$theme->exists())
+            return;
+        $default_theme = jswp_env_get_theme();
+        if ($theme->stylesheet === $default_theme || $theme->template === $default_theme)
+            wp_die(_("You are not allowed to delete this theme."));
+    }
 }
 call_user_func("js_validate_request_uri");
