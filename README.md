@@ -13,20 +13,19 @@ The plugin should be placed in `/wp-content/plugins/jumpstarter`.
 
 This plugin has some expectations that must be fulfilled:
 
-* SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
+* SQLite must be used as a database with [the sqlite-integration plugin](https://WordPress.org/plugins/sqlite-integration/).
 * The `js-init.php` script must be run successfully (return exit code 0) before the HTTP port is opened and the Wordpress site can accept requests.
 * TLS must be used (HTTPS).
-* Plugin uploads and code changes must be disabled with `DISALLOW_FILE_MODS` in `wp-config.php`.
-* `DB_DIR` must be set to `"/app/state/wp-db"` in `wp-config.php`.
+* `DB_DIR` must be set to `"/app/code/wp-db"` in `wp-config.php`.
 * The `/wp-content/database` folder must not exist as it's a security hazard.
-* The user must not be able to change the theme or add or remove themes or plugins.
+* The user must not be able to change the theme base defined theme.
 
 ### What init does
 
 When the `js-init.php` is run it does the following:
 
-1. Install wordpress if `/app/state/wp-db` does not exist.
-2. Sync the `/app/env.json` and `/app/code/wp-env.json` environments with Wordpress.
+1. Install WordPress if `/app/code/wp-db` does not exist.
+2. Sync the `/app/env.json` and `/app/code/wp-env.json` environments with WordPress.
 
 Install is done the following way:
 
@@ -55,35 +54,32 @@ It also prints logging and error information to `stderr`.
 
 Install hooks:
 
-If you need to do modifications to wordpress during the install phase you can take advantage of the install hook functionality provided by js-init. The registered hooks are executed at step 6 in the install process and as such they are run an the context of an initialized WordPress instance.
+If you need to do modifications to WordPress during the install phase you can take advantage of the install hook functionality provided by js-init. The registered hooks are executed at step 6 in the install process and as such they are run an the context of an initialized WordPress instance.
 
 To register an install hook add the following to your theme or plugin:
 
 ```php
 add_action("jumpstarter_install", function() {
-	// Do your installation modifications here.
+    // Do your installation modifications here.
 });
 ```
 
 Alternative install:
 
-If your Wordpress app requires the database to be filled with example content it might be a good idea to speed up the process by running through the install before users starts their instances. These are the steps needed to do this kind of install:
+If your WordPress app requires the database to be filled with example content it might be a good idea to speed up the process by running through the install before users starts their instances. These are the steps needed to do this kind of install:
 
 1. Do a normal install by issuing `php /app/code/src/wp-content/plugins/jumpstarter/js-init.php`.
 2. Make the db/content modifications needed (this could be done with the install hooks).
 3. Create the directory `/app/code/js-init-state`.
-4. Copy the files needed from `/app/state/` to `/app/code/js-init-state/`.
 
-When the user starts a new instance of the app the init script will use the files inside `/app/code/js-init-state` and then update the wordpress database with the user's information.
+When the user starts a new instance of the app the init script will use the files inside `/app/code/js-init-state` and then update the WordPress database with the user's information.
 
 ## What the plugin does
 
 When the plugin itself is run by Wordpress after installing it does the following:
 
 - Activates all app plugins defined by the env automatically, deactivates the rest.
-- Prevents users/admins from manually activating or deactivating plugins.
-- Hides the plugin page in the admin panel to avoid confusion for end users.
-- Sandboxes all users (even super admins) and overrides the `switch_themes` capability, disabling it. This allows no one to switch themes or see the installed themes. This is done by extending the `WP_User` class and overriding the current user from the `set_current_user` action.
+- Sandboxes all users (even super admins) and overrides any user capabilities defined in `wp-env.json`.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
 - Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
 
@@ -97,7 +93,6 @@ WordPress settings that you want the Jumpstarter plugin to automatically sync wi
 {
 	"theme": "",
 	"plugins": [],
-	"user_plugins": [],
 	"disabled_capabilities": [],
 	"options": {}
 }
@@ -106,7 +101,6 @@ WordPress settings that you want the Jumpstarter plugin to automatically sync wi
 Field explanation:
 
 * `theme` - A string containing the name of the folder containing the theme in wp-content/themes/
-* `plugins` - A list of plugin files (["hello.php", "myplugin/plugin.php", ...]).
-* `user_plugins` - A list of plugins that the user can enable or disable at will.
+* `plugins` - A list of plugin files (["hello.php", "myplugin/plugin.php", ...]). These plugins will be activated upon install.
 * `disabled_capabilities` - A list of WordPress capabilities. (["edit_posts", "edit_pages"]).
 * `options` - An object of Key -> Val.

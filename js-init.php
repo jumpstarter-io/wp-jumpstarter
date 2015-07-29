@@ -1,14 +1,14 @@
 <?php
 /*
  * This Jumpstarter init file should be pre executed before the web server
- * starts. It indempotently handles automatic wordpress installation if the
+ * starts. It idempotently handles automatic wordpress installation if the
  * app is starting for the first time in an instance.
  *
  * You should pre_exec this script before starting the web server by running:
  * php /app/code/src/wp-content/plugins/jumpstarter/js-init.php
  */
 
-require_once "jswp-env.php";
+require_once("jswp-env.php");
 
 // Log to stderr.
 function js_log($msg) {
@@ -27,12 +27,29 @@ function js_eexec($cmd) {
     }
 }
 
-function js_db_state_dir() {
-    return "/app/state/wp-db";
+function js_db_dir() {
+    return "/app/code/wp-db";
+}
+
+function js_db_tmp_dir() {
+    return "/tmp/wp-db";
 }
 
 function js_init_state_dir() {
     return "/app/code/js-init-state";
+}
+
+function js_container_option_key() {
+    return "js_container_id";
+}
+
+function js_env_container_id_key_path() {
+    return "ident.container.id";
+}
+
+function js_is_assembly() {
+    $is_assembly = js_env_get_value("ident.container.is_assembly");
+    return $is_assembly === true;
 }
 
 function js_include_wp() {
@@ -40,12 +57,13 @@ function js_include_wp() {
     static $wp_included = false;
     if ($wp_included)
         return;
-
-    // Include wordpress from CLI.
-    //define("ABSPATH", realpath(__DIR__ . "/../../../") . "/");
     define("ABSPATH", "/app/code/src/");
+    // We pretend a user visited wordpress to install it through the generated domain.
+    define("WP_SITEURL", js_env_get_siteurl());
+    define("WP_ADMIN", true);
+    // Include wordpress from CLI.
     $_SERVER['HTTPS'] = "on";
-    if (defined("WP_INSTALLING") && WP_INSTALLING === true) {
+    if (defined("WP_INSTALLING") && !defined("TEMPLATEPATH")) {
         define("TEMPLATEPATH", ABSPATH . "wp-content/themes/" . jswp_env_get_theme());
     }
     js_log("including wp-load.php");
@@ -53,16 +71,10 @@ function js_include_wp() {
     js_log("including upgrade.php");
     require_once(ABSPATH . "wp-admin/includes/upgrade.php");
 
-    // Dev sanity check: Ensure that DISALLOW_FILE_MODS is set to the right value.
-    if (!defined("DISALLOW_FILE_MODS") || DISALLOW_FILE_MODS !== true) {
-        js_log("error: DISALLOW_FILE_MODS is not set to the correct value in wp-config.php, it should be set to [true]");
-        exit;
-    }
-
     // Dev sanity check: Ensure that DB_DIR is set to the right value.
-    $db_state_dir = js_db_state_dir();
-    if (!defined("DB_DIR") || DB_DIR !== $db_state_dir) {
-        js_log("error: DB_DIR is not set to the correct value in wp-config.php, it should be set to [$db_state_dir]");
+    $db_dir = js_db_dir();
+    if (!defined("DB_DIR") || DB_DIR !== $db_dir) {
+        js_log("error: DB_DIR is not set to the correct value in wp-config.php, it should be set to [$db_dir]");
         exit;
     }
 
@@ -75,14 +87,6 @@ function js_include_wp() {
 
     // Wordpress is included now.
     $wp_included = true;
-}
-
-function js_activate_plugin($plugin_path) {
-    $result = activate_plugin($plugin_path);
-    if ($result !== null) {
-        js_log("failed to activate plugin [$plugin_path]: " . json_encode(array($result->get_error_messages(), $result->get_error_data())));
-        exit(1);
-    }
 }
 
 function js_run_install_scripts() {
@@ -108,14 +112,11 @@ function js_run_install_scripts() {
     }
 }
 
-function js_db_tmp_dir() {
-    return "/tmp/wp-db";
-}
-
 function js_sync_theme() {
     $stylesheet = get_option("stylesheet");
     $env_stylesheet = jswp_env_get_theme();
-    if (!defined("WP_INSTALLING") && $stylesheet !== $env_stylesheet && jswp_env_is_capability_allowed("switch_theme")) {
+    // If were not installing and the user has changed stylesheet, then that's fine.
+    if (!defined("WP_INSTALLING") && $stylesheet !== $env_stylesheet) {
         js_log("using user defined theme [$stylesheet]");
         return;
     }
@@ -176,70 +177,69 @@ function js_sync_plugins_load_order() {
     update_option("active_plugins", $active_plugins);
 }
 
-function js_sync_plugins() {
-    wp_clean_plugins_cache();
-    $core_plugins = jswp_env_core_plugins();
-    $app_plugins = jswp_env_get_plugins();
-    $user_plugins = jswp_env_get_user_plugins();
-    $installed_plugins = get_plugins();
-    $active_plugins = get_option("active_plugins");
-    foreach ($installed_plugins as $i_plugin_path => $plugin) {
-        if (in_array($i_plugin_path, $core_plugins))
-            continue;
-        if (in_array($i_plugin_path, $app_plugins))
-            continue;
-        if (in_array($i_plugin_path, $user_plugins))
-            continue;
-        if (jswp_env_is_capability_allowed("activate_plugins"))
-            continue;
-        js_log("deactivating app plugin [$i_plugin_path] ($plugin[Name])");
-        deactivate_plugins(array($i_plugin_path), true);
-    }
-    foreach ($app_plugins as $app_plugin_path) {
-        if (!isset($installed_plugins[$app_plugin_path]))
-            throw new Exception("plugin to install [$app_plugin_path] not found!");
-        if (!defined("WP_INSTALL") &&
-            in_array($app_plugin_path, $user_plugins) &&
-            !in_array($app_plugin_path, $active_plugins)) {
-            continue;
-        }
-        js_log("activating app plugin [$app_plugin_path] (" . $installed_plugins[$app_plugin_path]["Name"] . ")");
-        js_activate_plugin($app_plugin_path);
+function js_activate_plugin($plugin_path) {
+    $result = activate_plugin($plugin_path);
+    if ($result !== null) {
+        js_log("failed to activate plugin [$plugin_path]: " . json_encode(array($result->get_error_messages(), $result->get_error_data())));
+        exit(1);
     }
 }
 
+function js_sync_plugins() {
+    wp_clean_plugins_cache();
+    $plugins = jswp_env_core_plugins();
+    // If we're installing we also make sure that the plugins specified in
+    // wp-env.json are activated.
+    if (defined("WP_INSTALLING")) {
+        $plugins = array_merge($plugins, jswp_env_get_plugins());
+    }
+    $installed_plugins = get_plugins();
+    foreach ($plugins as $plugin_key) {
+        if (!isset($installed_plugins[$plugin_key])) {
+            throw new Exception("plugin to install [$plugin_key] not found!");
+        }
+        js_log("activating app plugin [$plugin_key] ({$installed_plugins[$plugin_key]['Name']})");
+        js_activate_plugin($plugin_key);
+    }
+}
+
+function js_install_set_defines() {
+    if (!defined("WP_INSTALLING"))
+        define("WP_INSTALLING", true);
+}
+
 function js_install_init_tmp_db() {
-    $db_state_dir = js_db_state_dir();
+    $db_dir = js_db_dir();
     // Create symlink to allow extremly fast ram based install.
     //$db_tmp_dir = "/tmp/wp-db";
     $db_tmp_dir = js_db_tmp_dir();
     if (file_exists($db_tmp_dir))
         js_eexec("rm -rf " . escapeshellarg($db_tmp_dir));
     js_eexec("mkdir " . escapeshellarg($db_tmp_dir));
-    js_eexec("ln -s " . escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_state_dir));
+    js_eexec("ln -s " . escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_dir));
 }
 
 function js_install_finalize_db() {
     // Copy the database over to the state and atomically move it in place to mark wordpress as installed.
-    // We delete any old temporary db state to make the install indempotent.
+    // We delete any old temporary db state to make the install idempotent.
     js_log("copying installed database from ram to state");
-    $db_state_dir = js_db_state_dir();
-    $db_state_tmp_dir = "/app/state/wp-db.tmp";
+    $db_dir = js_db_dir();
+    $db_code_tmp_dir = "/app/code/wp-db.tmp";
     $db_tmp_dir = js_db_tmp_dir();
-    if (file_exists($db_state_tmp_dir))
-        js_eexec("rm -rf " . escapeshellarg($db_state_tmp_dir));
-    js_eexec("cp -rp ". escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_state_tmp_dir));
+    if (file_exists($db_code_tmp_dir))
+        js_eexec("rm -rf " . escapeshellarg($db_code_tmp_dir));
+    js_eexec("cp -rp ". escapeshellarg($db_tmp_dir) . " " . escapeshellarg($db_code_tmp_dir));
     js_eexec("rm -rf " . escapeshellarg($db_tmp_dir));
-    js_eexec("rm " . escapeshellarg($db_state_dir));
+    js_eexec("rm " . escapeshellarg($db_dir));
     js_log("syncing data to state");
     js_eexec("sync");
     js_log("final atomic move");
-    js_eexec("mv ". escapeshellarg($db_state_tmp_dir) . " " . escapeshellarg($db_state_dir));
+    js_eexec("mv ". escapeshellarg($db_code_tmp_dir) . " " . escapeshellarg($db_dir));
     // Wait for sync before considering installation complete.
     js_eexec("sync");
 }
 
-function js_restart_script() {
+function js_restart_init_script() {
     // Restart the CLI script to run the init phase again to test with an installed wordpress and sync env.
     global $argv;
     $execve_path = PHP_BINARY;
@@ -249,7 +249,37 @@ function js_restart_script() {
     exit(1);
 }
 
+function js_install_update_user_info() {
+    // Set user information during install.
+    if (!defined("WP_INSTALLING"))
+        return;
+    js_log("updating user info");
+    $admin_user = get_user_by("login", "admin");
+    $env_name = js_env_get_value("ident.user.name");
+    $admin_default_name = "admin";
+    $user_name = empty($env_name)? $admin_default_name: $env_name;
+    $env_email = js_env_get_value("ident.user.email");
+    $user_name_arr = explode(" ", $user_name);
+    wp_update_user(array(
+        "ID" => $admin_user->ID,
+        "user_email" => $env_email,
+        "user_nicename" => $user_name,
+        "display_name" => $user_name,
+        "first_name" => reset($user_name_arr),
+        "last_name" => end($user_name_arr)
+    ));
+}
+
+function js_set_db_container_id() {
+    update_option(js_container_option_key(), js_env_get_value(js_env_container_id_key_path()));
+}
+
+function js_get_db_container_id() {
+    return get_option(js_container_option_key());
+}
+
 function js_install_wp() {
+    js_install_set_defines();
     js_install_init_tmp_db();
     // When exiting before succesfull install, return bad error code.
     $install_ok = false;
@@ -259,20 +289,13 @@ function js_install_wp() {
     });
 
     // Read and prepare configuration for automatic install.
-    $is_assembly = !empty(js_env_get_value("ident.container.is_assembly"));
     $blog_title = "My blog";
     $user_name = "admin";
     $user_email = strval(js_env_get_value("ident.user.email"));
-    $public = true;
     $deprecated = null;
     // Let wordpress generate a random password for instances, for assemblies, use "test".
-    $user_password = $is_assembly? "test": null;
+    $user_password = js_is_assembly()? "test": null;
     $language = null;
-
-    // We pretend a user visited wordpress to install it through the generated domain.
-    define("WP_SITEURL", js_env_get_siteurl());
-    define("WP_INSTALLING", true);
-    define("WP_ADMIN", true);
 
     // Include wordpress definitions and config.
     js_include_wp();
@@ -280,38 +303,34 @@ function js_install_wp() {
     // Install wordpress now.
     js_log("running wordpress installer with name:[$user_name], email:[$user_email], password:[$user_password]");
     wp_install($blog_title, $user_name, $user_email, $public, $deprecated, $user_password, $language);
-
-    // Silently activate all required plugins.
-    // The developer should have removed plugins that should not be activated.
+    js_install_update_user_info();
+    // Activate core and developer specified plugins.
     js_log("activate plugins");
-    foreach (jswp_env_core_plugins() as $plugin_key) {
-        js_log("activating core plugin [$plugin_key]");
-        js_activate_plugin($plugin_key);
-    }
+    js_sync_plugins();
 
     // Search for install scripts and run them.
     js_run_install_scripts();
-    // Activate plugins.
-    js_sync_plugins();
     // Set theme.
     js_sync_theme();
     // Try to load the theme functions.php to enable running of install hook.
     js_load_theme_functions();
+    // Set the container key.
+    js_set_db_container_id();
     // Trigger jumpstarter install hooks.
     do_action("jumpstarter_install");
-
+    // Finalize installation by moving the database files to the correct location.
     js_install_finalize_db();
     $install_ok = true;
     js_log("succesfully installed wordpress!");
     // Restart the js-init script.
-    js_restart_script();
+    js_restart_init_script();
 }
 
 function rec_replace_string($search_string, $replacement, $data, $serialized = false) {
     try {
         if (is_string($data) && ($unserialized = @unserialize($data)) !== false) {
             $data = rec_replace_string($search_string, $replacement, $unserialized, true);
-        } elseif (is_array($data)) {
+        } else if (is_array($data)) {
             $tmp = array();
             foreach($data as $key => $value) {
                 $tmp[$key] = rec_replace_string($search_string, $replacement, $value, false);
@@ -395,39 +414,19 @@ function js_sync_wp_with_env() {
     } else {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
-    // Apply (sync) wordpress theme from env.
-    js_sync_theme();
-    // Allow for custom theme hooks to be run later on.
-    js_load_theme_functions();
     // Order the plugins list if needed.
     js_sync_plugins_load_order();
     // Apply (sync) wordpress plugins from env.
     js_sync_plugins();
+    // Apply (sync) wordpress theme from env.
+    js_sync_theme();
+    // Allow for custom theme hooks to be run later on.
+    js_load_theme_functions();
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
     foreach (jswp_env_get_options() as $option => $value) {
         js_log("setting option [$option]: " . json_encode($value));
         update_option($option, $value);
-    }
-    // Apply (sync) user information from env.
-    $admin_user = get_user_by("login", "admin");
-    js_log("updating user info");
-    $admin_name = "admin";
-    $env_user_name = empty(js_env_get_value("ident.user.name"))? $admin_name: js_env_get_value("ident.user.name");
-    $env_user_email = js_env_get_value("ident.user.email");
-    $user_nicename = ($admin_user->user_nicename !== $admin_name)? $admin_user->user_nicename: $env_user_name;
-    $user_displayname = ($admin_user->display_name !== $admin_name)? $admin_user->display_name: $env_user_name;
-    wp_update_user(array("ID" => $admin_user->id, "user_email" => $env_user_email, "user_nicename" => $user_nicename, "display_name" => $user_displayname));
-    $first_name = "first_name";
-    $last_name = "last_name";
-    $meta_first_name = get_user_meta($admin_user->ID, $first_name, true);
-    $meta_last_name = get_user_meta($admin_user->ID, $last_name, true);
-    $user_name_arr = explode(" ", $env_user_name);
-    if ($env_user_name !== $admin_name && empty($meta_first_name) && count($user_name_arr) > 0) {
-        update_user_meta($admin_user->ID, $first_name, reset($user_name_arr));
-    }
-    if ($env_user_name !== $admin_name && empty($meta_last_name) && count($user_name_arr) > 1) {
-        update_user_meta($admin_user->ID, $last_name, end($user_name_arr));
     }
     // Run theme/plugin hooks for env sync phase.
     do_action("jumpstarter_sync_env");
@@ -450,31 +449,39 @@ call_user_func(function() {
         return;
 
     // Check for previous failed installation.
-    $db_state_dir = js_db_state_dir();
-    if (is_link($db_state_dir)) {
-        js_log("found old [$db_state_dir] symlink, assuming previous failed installation");
-        js_eexec("rm " . escapeshellarg($db_state_dir));
+    $db_dir = js_db_dir();
+    if (is_link($db_dir)) {
+        js_log("found old [$db_dir] symlink, assuming previous failed installation");
+        js_eexec("rm " . escapeshellarg($db_dir));
     }
 
-    $throw_invalid_inode_type_fn = function() use ($db_state_dir) {
-        throw new Exception("invalid inode type for path [$db_state_dir] (expected directory)");
+    $throw_invalid_inode_type_fn = function() use ($db_dir) {
+        throw new Exception("invalid inode type for path [$db_dir] (expected directory)");
     };
     // We don't want to install if already installed.
-    if (file_exists($db_state_dir)) {
-        if (!is_dir($db_state_dir))
+    if (file_exists($db_dir)) {
+        if (!is_dir($db_dir))
             $throw_invalid_inode_type_fn();
+        // Make sure that this installation belongs to this container.
+        js_include_wp();
+        $oid = js_get_db_container_id();
+        $cid = js_env_get_value(js_env_container_id_key_path());
+        if ($oid !== $cid) {
+            js_log("container id changed from $oid to $cid");
+            js_eexec("rm -rf " . escapeshellarg(js_db_dir()));
+            js_restart_init_script();
+        }
         js_log("skipping wordpress install (already done)");
     } else {
-        if (is_link($db_state_dir))
-            $throw_invalid_inode_type_fn();
         $init_state_dir = js_init_state_dir();
         $init_state_db_dir = "$init_state_dir/wp-db";
         if (file_exists($init_state_dir) && file_exists($init_state_db_dir)) {
             // Not installed but we've got a js-init-state directory.
             js_log("installing wordpress from init state directory");
+            js_install_set_defines();
             js_install_init_tmp_db();
-            $db_state_dir = js_db_state_dir();
-            js_eexec("cp -r $init_state_db_dir/. " . escapeshellarg("$db_state_dir/"));
+            $db_dir = js_db_dir();
+            js_eexec("cp -r $init_state_db_dir/. " . escapeshellarg("$db_dir/"));
             js_include_wp();
             js_use_js_pdo();
             try {
@@ -482,26 +489,23 @@ call_user_func(function() {
                 global $wpdb;
                 // Start transaction that spans all queries until explicit commit.
                 $wpdb->begin();
-                // Since we've installed a db copy we need to update the user's email.
+                // Set a random password for the admin account.
                 $admin_user = get_user_by("login", "admin");
-                $admin_name = "admin";
-                wp_update_user(array("ID" => $admin_user->id, "user_email" => js_env_get_value("ident.user.email"), "user_nicename" => $admin_name, "display_name" => $admin_name));
-                update_user_meta($admin_user->ID, "first_name", "");
-                update_user_meta($admin_user->ID, "last_name", "");
-                // Also set a random password for the admin account.
-                wp_set_password(wp_generate_password(), $admin_user->id);
-
+                wp_set_password(js_is_assembly()? "test": wp_generate_password(), $admin_user->id);
+                // Since we've installed a db copy we need to update the user info.
+                js_install_update_user_info();
+                // Set current container id.
+                js_set_db_container_id();
+                // Commit all database changes.
                 $wpdb->commit();
             } catch (Exception $e) {
                 js_log($e->getMessage());
                 exit(1);
             }
-            // Copy everything in the init-state dir that's not the database.
-            js_eexec("rsync -r --exclude 'wp-db' $init_state_dir/* /app/state/");
             // Make final atomic move of db.
             js_install_finalize_db();
             // Restart the init script.
-            js_restart_script();
+            js_restart_init_script();
         } else {
             // Wordpress is not installed.
             js_log("installing wordpress (first run)");

@@ -12,66 +12,31 @@
 if (!defined("ABSPATH"))
     die("-1");
 
-require_once "jswp-env.php";
+require_once(dirname(__FILE__) . "/jswp-env.php");
 
 // Only allow full access to plugin activation/deactivation from cli.
-// Allow activation/deactivation of plugins specified in the app env.
 if (php_sapi_name() !== "cli") {
-    add_action("activate_plugin", function($plugin_key) {
-        if (in_array($plugin_key, jswp_env_core_plugins()) || (!in_array($plugin_key, jswp_env_get_user_plugins()) && !jswp_env_is_capability_allowed("activate_plugins")))
-            wp_die(__("Plugin activation not allowed."));
-    });
-    add_action("deactivate_plugin", function($plugin_key) {
-        if (in_array($plugin_key, jswp_env_core_plugins()) || (!in_array($plugin_key, jswp_env_get_user_plugins()) && !jswp_env_is_capability_allowed("deactivate_plugins")))
-            wp_die(__("Plugin deactivation not allowed."));
-    });
-}
-
-// We do not want to enable users to disable the Jumpstarter core plugins
-// even if plugin activation/deactivation is enabled.
-function filter_core_plugins($plugins) {
-    $core_plugins = jswp_env_core_plugins();
-    foreach ($core_plugins as $core_plugin) {
-        unset($plugins[$core_plugin]);
+    // Allow all plugin activation/deactivation except for Jumpstarter core plugins.
+    foreach (array("activate_plugin" => "activate", "deactivate_plugin" => "deactivate") as $action => $action_name) {
+        add_action($action, function($plugin_key) use ($action_name) {
+            if (in_array($plugin_key, jswp_env_core_plugins())) {
+                wp_die(__("You are not allowed to $action_name this plugin."));
+            }
+        }, 1, 1);
     }
-    return $plugins;
-}
-add_filter("all_plugins", "filter_core_plugins");
-
-// If the app env has specified user plugins we show the plugins tab.
-if (!empty(jswp_env_get_user_plugins())) {
-    // Setup filter function for only showing the plugins specified in app env.
-    function filter_user_plugins($plugins) {
-        $user_plugins = jswp_env_get_user_plugins();
-        foreach($plugins as $plugin_key => $plugin) {
-            if (!in_array($plugin_key, $user_plugins))
-                unset($plugins[$plugin_key]);
+    // Filter out the Jumpstarter core plugins from listing as we don't want the
+    // user to think these can be activated/deactivated.
+    add_filter("all_plugins", function($plugins) {
+        foreach (jswp_env_core_plugins() as $core_plugin) {
+            unset($plugins[$core_plugin]);
         }
         return $plugins;
-    }
-    add_filter("all_plugins", "filter_user_plugins");
-} else {
-    add_action("admin_menu", function() {
-        if (!jswp_env_is_capability_allowed("show_plugins"))
-            remove_menu_page("plugins.php");
-    });
+    }, 100, 1);
 }
-
-add_action("admin_menu", function() {
-    // Always remove update core.
-    remove_submenu_page("index.php", "update-core.php");
-});
-
-add_action("wp_before_admin_bar_render", function() {
-    // Remove the update link in the admin menu as this link leads
-    // to /wp-admin/update-core.php.
-    global $wp_admin_bar;
-    $wp_admin_bar->remove_menu("updates");
-});
 
 // Add a filter for outgoing requests that prevents WordPress from checking for
 // updates for our core plugins.
-function js_prevent_update_check_of_core_plugins($r, $url) {
+add_filter("http_request_args", function($r, $url) {
     if (strpos($url, "api.wordpress.org/plugins/update-check") !== FALSE) {
         $update_plugins = json_decode($r["body"]["plugins"], true);
         foreach (jswp_env_core_plugins() as $plugin) {
@@ -80,8 +45,7 @@ function js_prevent_update_check_of_core_plugins($r, $url) {
         $r["body"]["plugins"] = json_encode($update_plugins);
     }
     return $r;
-}
-add_filter("http_request_args", "js_prevent_update_check_of_core_plugins", 10, 2);
+}, 100, 2);
 
 // Sandboxed Jumpstarter Wordpress user.
 class JS_WP_User extends WP_User {
@@ -91,14 +55,19 @@ class JS_WP_User extends WP_User {
     }
 
     public function has_cap($in) {
-        $cap = (is_numeric($in)? $this->translate_level_to_cap($cap): $in);
-        if (in_array($cap, jswp_env_get_disabled_capabilities()))
-            return false;
-        if (jswp_env_is_capability_allowed($cap))
-            return true;
-        return call_user_func_array(array($this, "parent::" . __FUNCTION__), func_get_args());
+        $cap = (is_numeric($in)? $this->translate_level_to_cap($in): $in);
+        return (in_array($cap, jswp_env_get_disabled_capabilities()))? false:
+                call_user_func_array(array($this, "parent::" . __FUNCTION__), func_get_args());
     }
 }
+
+add_action("set_current_user", function() {
+    global $current_user;
+    if (!is_object($current_user))
+        return;
+    // Sandbox the current user per the Jumpstarter environment.
+    $current_user = new JS_WP_User($current_user);
+});
 
 function js_route_reflected_login() {
     $reflected_url = js_env_get_value("ident.user.login_url");
@@ -135,7 +104,7 @@ add_action('login_init', function() {
     wp_die(__("Jumpstarter login failed: no valid account found."));
 });
 
-add_action("login_footer", function () {
+add_action("login_footer", function() {
     $login_url = js_env_get_value("ident.user.login_url");
     ?>
         <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
@@ -151,34 +120,27 @@ add_action("login_footer", function () {
     <?php
 });
 
-add_action("set_current_user", function() {
-    global $current_user;
-    if (!is_object($current_user))
-        return;
-    // Sandbox the current user per the Jumpstarter environment.
-    $current_user = new JS_WP_User($current_user);
-});
+function js_https_preg_regx() {
+    return "/^https/";
+}
+
+function js_domain_is_https() {
+    return preg_match(js_https_preg_regx(), js_env_get_siteurl());
+}
 
 // Filter for correctly determining whether a url should be using HTTPS or HTTP.
 // Currently the WordPress engine replaces the url scheme if it detects that the
 // global $_SERVER['HTTPS'] is set to "on" or 1. This works fine for auto configured
 // js domains as they use https but fails when the user has added a non secure domain.
-function js_set_url_scheme($url, $scheme, $orig_scheme) {
-    // Get the siteurl configured for this container. This will include the correct
-    // scheme to use. If auto domain or configured secure domain this will use the
-    // https scheme.
-    $js_siteurl = js_env_get_siteurl();
-    $https_pattern = "/^https/";
+add_filter("set_url_scheme", function($url, $scheme, $orig_scheme) {
     // If the given url and the js siteurl both uses https then return as is.
-    if ($scheme === "https" && preg_match($https_pattern, $js_siteurl)) {
+    if ($scheme === "https" && js_domain_is_https()) {
         return $url;
     }
     // If a domain is added to Jumpstarter that isn't secure we need to transform the
     // url into a http version.
-    return preg_replace($https_pattern, "http", $url);
-}
-
-add_filter("set_url_scheme", "js_set_url_scheme", 100, 3);
+    return preg_replace(js_https_preg_regx(), "http", $url);
+}, 100, 3);
 
 // Short-circuit URLs to emulate hard coded configuration.
 // We need to check if these are already defined as the installer sets these
@@ -189,13 +151,9 @@ if (!defined("WP_SITEURL"))
 if (!defined("WP_HOME"))
     define("WP_HOME", get_option("home"));
 
-function js_validate_request_uri() {
-    // Deny access to /wp-admin/update-core.php as that page may list updates for
-    // core plugins.
-    if (strpos($_SERVER["REQUEST_URI"], "/wp-admin/update-core.php") !== FALSE)
-        wp_die(_("This page is disabled."));
-    // Make sure that we don't uninstall the default theme that is specified in
-    // the wp-env.json file.
+call_user_func(function() {
+    // Make sure that we don't try to uninstall the default theme that is
+    // specified in the wp-env.json file.
     if (strpos($_SERVER["REQUEST_URI"], "/wp-admin/themes.php") !== FALSE && $_GET["action"] === "delete") {
         if (!isset($_GET["stylesheet"]))
             return;
@@ -206,5 +164,38 @@ function js_validate_request_uri() {
         if ($theme->stylesheet === $default_theme || $theme->template === $default_theme)
             wp_die(_("You are not allowed to delete this theme."));
     }
-}
-call_user_func("js_validate_request_uri");
+});
+
+call_user_func(function() {
+    function js_resource_scheme($src) {
+        // Replace URL scheme to https if the siteurl from env is https.
+        if (js_domain_is_https() && !preg_match(js_https_preg_regx(), $src)) {
+            $src = preg_replace("/^http/", "https", $src);
+        }
+        return $src;
+    }
+    // Subclass WP_Styles to hijack requests to wp_enqueue_style. This is done to
+    // change http resources to https if the container is running https. If the requested
+    // resource uses http and the site runs https it doesn't matter if the resource can't
+    // be loaded over https since browsers will block non https calls on https sites.
+    class JSWP_Styles extends WP_Styles {
+        public function add($handle, $src, $deps = array(), $ver = false, $args = null) {
+            return parent::add($handle, js_resource_scheme($src), $deps, $ver, $args);
+	}
+    }
+    // Replace global $wp_styles with our own class.
+    global $wp_styles;
+    $wp_styles = new JSWP_Styles;
+    // Subclass WP_Scripts to hijack requests to wp_enqueue_script. This is done to
+    // change http resources to https if the container is running https. If the requested
+    // resource uses http and the site runs https it doesn't matter if the resource can't
+    // be loaded over https since browsers will block non https calls on https sites.
+    class JSWP_Scripts extends WP_Scripts {
+        public function add($handle, $src, $deps = array(), $ver = false, $args = null) {
+            return parent::add($handle, js_resource_scheme($src), $deps, $ver, $args);
+        }
+    }
+    // Replace global $wp_scripts with our own class.
+    global $wp_scripts;
+    $wp_scripts = new JSWP_Scripts;
+});
