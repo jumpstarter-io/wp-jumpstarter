@@ -443,6 +443,53 @@ function js_sync_wp_with_env() {
     js_log("completed env sync");
 }
 
+function js_gen_salt_string($length = 64) {
+    $pchars = "Z\>Y;wb+NeILx:!sCcm9}Kt|jXu8i.MWP5zd2$]l4=7E %/R6A^#F,V0T3o(k_*-DyfS&g`qHQJ1?pUv@na)G<~BhOr{[";
+    $pchars_len = strlen($pchars);
+    $salt = "";
+    for ($i = 0; $i < $length; $i++) {
+        $salt .= $pchars[mt_rand() % $pchars_len];
+    }
+    return $salt;
+}
+
+function js_set_config_salts() {
+    js_log("Settings wp config salts");
+    // Check if config salts are needed or if we've already set them up.
+    $config_path = "/app/code/src/wp-config.php";
+    $config = file_get_contents($config_path);
+    $js_config_salts_set = "<?php /*js_config_salts_set*/?>";
+    if (substr_compare($config, $js_config_salts_set, 0, strlen($js_config_salts_set)) === 0) {
+        js_log("Salts already set");
+        return;
+    }
+    // Generate all config salts.
+    $salts = array(
+        "AUTH_KEY" => js_gen_salt_string(),
+        "SECURE_AUTH_KEY" => js_gen_salt_string(),
+        "LOGGED_IN_KEY" => js_gen_salt_string(),
+        "NONCE_KEY" => js_gen_salt_string(),
+        "AUTH_SALT" => js_gen_salt_string(),
+        "SECURE_AUTH_SALT" => js_gen_salt_string(),
+        "LOGGED_IN_SALT" => js_gen_salt_string(),
+        "NONCE_SALT" => js_gen_salt_string()
+    );
+    // Replace config salts in wp-config.
+    foreach ($salts as $k => $v) {
+        $rep_cb = function() use($k, $v) {
+            return "define('" . $k . "',    '" . $v . "');";
+        };
+        $config = preg_replace_callback("/define\('" . $k . "',\s+'[^\']*'\);/", $rep_cb, $config);
+    }
+    // Put the js bom in the config file.
+    $config = $js_config_salts_set . $config;
+    // Write the config file to disk.
+    file_put_contents($config_path, $config);
+    // Restart the script to use the new salts for installation.
+    js_log("Salts set, restarting");
+    js_restart_init_script();
+}
+
 call_user_func(function() {
     // We don't want to run unless invoked by cli.
     if (php_sapi_name() !== "cli")
@@ -458,6 +505,8 @@ call_user_func(function() {
     $throw_invalid_inode_type_fn = function() use ($db_dir) {
         throw new Exception("invalid inode type for path [$db_dir] (expected directory)");
     };
+    // Maybe set config salts.
+    js_set_config_salts();
     // We don't want to install if already installed.
     if (file_exists($db_dir)) {
         if (!is_dir($db_dir))
