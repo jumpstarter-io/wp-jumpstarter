@@ -459,7 +459,7 @@ function js_set_config_salts() {
     $config_path = "/app/code/src/wp-config.php";
     $config = file_get_contents($config_path);
     $js_config_salts_set = "<?php /*js_config_salts_set*/?>";
-    if (substr_compare($config, $js_config_salts_set, 0, strlen($js_config_salts_set)) === 0) {
+    if (substr_compare($config, $js_config_salts_set, 0, strlen($js_config_salts_set)) >= 0) {
         js_log("Salts already set");
         return;
     }
