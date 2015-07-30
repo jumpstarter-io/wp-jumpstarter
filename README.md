@@ -1,7 +1,7 @@
-Wordpress Jumpstarter
+WordPress Jumpstarter
 =====================
 
-The official Jumpstarter plugin for Wordpress integration. It primarily allows you to sell Themes without writing any extra code for Wordpress.
+The official Jumpstarter plugin for WordPress integration. It primarily allows you to sell Themes without writing any extra code for WordPress.
 
 Read [the getting started guide here](https://github.com/jumpstarter-io/help/wiki/Getting-Started:-PHP-&-Wordpress-With-Jumpstarter-Console).
 
@@ -13,8 +13,8 @@ The plugin should be placed in `/wp-content/plugins/jumpstarter`.
 
 This plugin has some expectations that must be fulfilled:
 
-* SQLite must be used as a database with [the sqlite-integration plugin](https://WordPress.org/plugins/sqlite-integration/).
-* The `js-init.php` script must be run successfully (return exit code 0) before the HTTP port is opened and the Wordpress site can accept requests.
+* SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
+* The `js-init.php` script must be run successfully (return exit code 0) before the HTTP port is opened and the WordPress site can accept requests.
 * TLS must be used (HTTPS).
 * `DB_DIR` must be set to `"/app/code/wp-db"` in `wp-config.php`.
 * The `/wp-content/database` folder must not exist as it's a security hazard.
@@ -30,7 +30,7 @@ When the `js-init.php` is run it does the following:
 Install is done the following way:
 
 1. Clean up previous failed or aborted installations.
-2. Install Wordpress to RAM (in `/tmp`) to get rid of waiting for disk sync.
+2. Install WordPress to RAM (in `/tmp`) to get rid of waiting for disk sync.
    This allows installing in a second or less.
 3. Activating core plugins (`jumpstarter` and `sqlite-integration`).
 4. Setting the theme specified in `wp-env.json`.
@@ -74,12 +74,14 @@ When the user starts a new instance of the app the init script will use the file
 
 ## What the plugin does
 
-When the plugin itself is run by Wordpress after installing it does the following:
+When the plugin itself is run by WordPress after installing it does the following:
 
 - Sandboxes all users (even super admins) and overrides any user capabilities defined in `wp-env.json`.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
 - Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as the admin user.
-
+- Hooks in on set_url_scheme and uses the env to determine if the url should use http or https.
+- Disables the possibility to delete the theme that's specified in the wp env.
+- Rewrites urls passed to `wp_enqueue_script` and `wp_enqueue_style`.
 
 ## wp-env.json
 
