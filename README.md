@@ -92,7 +92,6 @@ WordPress settings that you want the Jumpstarter plugin to automatically sync wi
 ```json
 {
 	"theme": "",
-	"plugins": [],
 	"disabled_capabilities": [],
 	"options": {}
 }
@@ -101,6 +100,5 @@ WordPress settings that you want the Jumpstarter plugin to automatically sync wi
 Field explanation:
 
 * `theme` - A string containing the name of the folder containing the theme in wp-content/themes/
-* `plugins` - A list of plugin files (["hello.php", "myplugin/plugin.php", ...]). These plugins will be activated upon install.
 * `disabled_capabilities` - A list of WordPress capabilities. (["edit_posts", "edit_pages"]).
 * `options` - An object of Key -> Val.

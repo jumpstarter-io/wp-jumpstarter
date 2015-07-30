@@ -29,10 +29,6 @@ function jswp_env_get_theme() {
     return jswp_env_get_value("theme");
 }
 
-function jswp_env_get_plugins() {
-    return jswp_env_get_val_or_array("plugins");
-}
-
 function jswp_env_get_options() {
     return jswp_env_get_val_or_array("options");
 }

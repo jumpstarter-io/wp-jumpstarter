@@ -188,12 +188,12 @@ function js_activate_plugin($plugin_path) {
 function js_sync_plugins() {
     wp_clean_plugins_cache();
     $plugins = jswp_env_core_plugins();
-    // If we're installing we also make sure that the plugins specified in
-    // wp-env.json are activated.
-    if (defined("WP_INSTALLING")) {
-        $plugins = array_merge($plugins, jswp_env_get_plugins());
-    }
     $installed_plugins = get_plugins();
+    // If we're installing we make sure that all installed plugins get activated. Later
+    // on it's up to the user to say if a plugin should be activated or not.
+    if (defined("WP_INSTALLING")) {
+        $plugins = array_merge($plugins, array_keys($installed_plugins));
+    }
     foreach ($plugins as $plugin_key) {
         if (!isset($installed_plugins[$plugin_key])) {
             throw new Exception("plugin to install [$plugin_key] not found!");
