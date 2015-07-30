@@ -33,22 +33,20 @@ Install is done the following way:
 2. Install Wordpress to RAM (in `/tmp`) to get rid of waiting for disk sync.
    This allows installing in a second or less.
 3. Activating core plugins (`jumpstarter` and `sqlite-integration`).
-4. Activating plugins specified in `wp-env.json`.
-5. Setting the theme specified in `wp-env.json`.
-6. Run WordPress install hooks registered with `add_action("jumpstarter_install",...)`.
-7. Atomically move the database in place. This allows the install to be idempotent.
-8. Restart by execve'ing itself so environment sync can run.
+4. Setting the theme specified in `wp-env.json`.
+5. Run WordPress install hooks registered with `add_action("jumpstarter_install",...)`.
+6. Atomically move the database in place. This allows the install to be idempotent.
+7. Restart by execve'ing itself so environment sync can run.
 
 Environment sync is done the following way:
 
 1. Opening and parsing `/app/code/wp-env.json`.
 2. If the siteurl has changed it performs a safe search/replace of $siteurl in `wp_posts`, `wp_postmeta` and `wp_options`.
 3. Set theme specified in `theme`.
-4. Activate the plugins specified in `plugins`.
-5. Update options specified in `options`.
-6. Opening and parsing `/app/env.json`.
-7. Update user details if they are admin default.
-8. Call the hook `jumpstarter_sync_env` to let themes/plugins modify db state depending on the env.
+4. Update options specified in `options`.
+5. Opening and parsing `/app/env.json`.
+6. Update user details if they are admin default.
+7. Call the hook `jumpstarter_sync_env` to let themes/plugins modify db state depending on the env.
 
 It also prints logging and error information to `stderr`.
 
@@ -72,16 +70,15 @@ If your WordPress app requires the database to be filled with example content it
 2. Make the db/content modifications needed (this could be done with the install hooks).
 3. Create the directory `/app/code/js-init-state`.
 
-When the user starts a new instance of the app the init script will use the files inside `/app/code/js-init-state` and then update the WordPress database with the user's information.
+When the user starts a new instance of the app the init script will use the files inside `/app/code/js-init-state` and then update the WordPress database with the users information.
 
 ## What the plugin does
 
 When the plugin itself is run by Wordpress after installing it does the following:
 
-- Activates all app plugins defined by the env automatically, deactivates the rest.
 - Sandboxes all users (even super admins) and overrides any user capabilities defined in `wp-env.json`.
 - Injects a login link to support Jumpstarter reflected login on `/wp-login.php`.
-- Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as one of the super admins (exactly which one is currently undefined).
+- Handles login requests from Jumpstarter by authenticating posts of `jumpstarter-auth-token`. On successful authentication the user is logged in as the admin user.
 
 
 ## wp-env.json
