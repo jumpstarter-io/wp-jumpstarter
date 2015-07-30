@@ -92,14 +92,12 @@ add_action('login_init', function() {
     $z = $_POST["jumpstarter-auth-token"];
     if (!js_env_token_auth_verify($z))
         wp_die(__("Jumpstarter login failed: authorization failed (old token?)."));
-    foreach (get_super_admins() as $admin_login) {
-        $user = get_user_by('login', $admin_login);
-        if (is_object($user)) {
-            $redirect_to = apply_filters( 'login_redirect', admin_url(), admin_url(), $user );
-            wp_set_auth_cookie($user->ID);
-            wp_redirect($redirect_to);
-            exit;
-        }
+    $user = get_user_by("login", "admin");
+    if (is_object($user)) {
+        $redirect_to = apply_filters("login_redirect", admin_url(), admin_url(), $user);
+        wp_set_auth_cookie($user->ID);
+        wp_redirect($redirect_to);
+        exit;
     }
     wp_die(__("Jumpstarter login failed: no valid account found."));
 });
