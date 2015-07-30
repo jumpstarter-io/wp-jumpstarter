@@ -37,7 +37,7 @@ if (php_sapi_name() !== "cli") {
 // Add a filter for outgoing requests that prevents WordPress from checking for
 // updates for our core plugins.
 add_filter("http_request_args", function($r, $url) {
-    if (strpos($url, "api.wordpress.org/plugins/update-check") !== FALSE) {
+    if (strpos($url, "api.wordpress.org/plugins/update-check") !== false) {
         $update_plugins = json_decode($r["body"]["plugins"], true);
         foreach (jswp_env_core_plugins() as $plugin) {
             unset($update_plugins["plugins"][$plugin]);
@@ -47,7 +47,7 @@ add_filter("http_request_args", function($r, $url) {
     return $r;
 }, 100, 2);
 
-// Sandboxed Jumpstarter Wordpress user.
+// Sandboxed Jumpstarter WordPress user.
 class JS_WP_User extends WP_User {
     public function __construct(WP_User $raw_wp_user) {
         foreach (get_object_vars($raw_wp_user) as $key => $var)
@@ -93,7 +93,7 @@ add_action('login_init', function() {
     if (!js_env_token_auth_verify($z))
         wp_die(__("Jumpstarter login failed: authorization failed (old token?)."));
     $user = get_user_by("login", "admin");
-    if (is_object($user)) {
+    if (is_object($user) && ($user instanceof WP_User)) {
         $redirect_to = apply_filters("login_redirect", admin_url(), admin_url(), $user);
         wp_set_auth_cookie($user->ID);
         wp_redirect($redirect_to);
