@@ -302,7 +302,7 @@ function js_install_wp() {
 
     // Install wordpress now.
     js_log("running wordpress installer with name:[$user_name], email:[$user_email], password:[$user_password]");
-    wp_install($blog_title, $user_name, $user_email, $public, $deprecated, $user_password, $language);
+    wp_install($blog_title, $user_name, $user_email, true, $deprecated, $user_password, $language);
     js_install_update_user_info();
     // Activate core and developer specified plugins.
     js_log("activate plugins");
