@@ -375,6 +375,14 @@ function js_update_siteurls($old_siteurl, $new_siteurl) {
     js_update_siteurl($old_siteurl, $new_siteurl, "wp_options", "option_id", array("option_value"));
 }
 
+function js_get_siteurl() {
+    global $wpdb;
+    $row = $wpdb->get_row($wpdb->prepare("SELECT option_value FROM $wpdb->options WHERE option_name = %s LIMIT 1", "siteurl"));
+    if (is_object( $row ))
+       return $row->option_value;
+    throw new Exception("wordpress option [siteurl] is not set");
+}
+
 function js_use_js_pdo() {
     static $using_js_pdo = false;
     if ($using_js_pdo === true)
@@ -404,7 +412,7 @@ function js_sync_wp_with_env() {
         exit(1);
     }
     // Sync wordpress domain if it changed.
-    $wp_siteurl = get_option("siteurl");
+    $wp_siteurl = js_get_siteurl();
     $env_siteurl = js_env_get_siteurl();
     if ($wp_siteurl !== $env_siteurl) {
         js_log("siteurl change detected, migrating from [$wp_siteurl] to [$env_siteurl]");
