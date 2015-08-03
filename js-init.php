@@ -444,7 +444,7 @@ function js_sync_wp_with_env() {
 }
 
 function js_gen_salt_string($length = 64) {
-    $pchars = "Z\>Y;wb+NeILx:!sCcm9}Kt|jXu8i.MWP5zd2$]l4=7E %/R6A^#F,V0T3o(k_*-DyfS&g`qHQJ1?pUv@na)G<~BhOr{[";
+    $pchars = "Z>Y;wb+NeILx:!sCcm9}Kt|jXu8i.MWP5zd2$]l4=7E %/R6A^#F,V0T3o(k_*-DyfS&g`qHQJ1?pUv@na)G<~BhOr{[";
     $pchars_len = strlen($pchars);
     $salt = "";
     for ($i = 0; $i < $length; $i++) {
