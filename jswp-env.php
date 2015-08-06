@@ -36,3 +36,14 @@ function jswp_env_get_options() {
 function jswp_env_get_disabled_capabilities() {
     return jswp_env_get_val_or_array("disabled_capabilities");
 }
+
+function js_https_preg_regx() {
+    return "/^https/";
+}
+
+function js_domain_is_https() {
+    static $is_https = null;
+    if ($is_https === null)
+        $is_https = preg_match(js_https_preg_regx (), js_env_get_siteurl ());
+    return $is_https;
+}

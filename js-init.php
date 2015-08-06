@@ -466,8 +466,8 @@ function js_set_config_salts() {
     // Check if config salts are needed or if we've already set them up.
     $config_path = "/app/code/src/wp-config.php";
     $config = file_get_contents($config_path);
-    $js_config_salts_set = "<?php /*js_config_salts_set*/?>";
-    if (substr_compare($config, $js_config_salts_set, 0, strlen($js_config_salts_set)) >= 0) {
+    $js_config_salts_set = "/* DO NOT REMOVE: js_config_salts_set: DO NOT REMOVE */";
+    if (strpos($config, $js_config_salts_set) !== false) {
         js_log("Salts already set");
         return;
     }
@@ -490,12 +490,27 @@ function js_set_config_salts() {
         $config = preg_replace_callback("/define\('" . $k . "',\s+'[^\']*'\);/", $rep_cb, $config);
     }
     // Put the js bom in the config file.
-    $config = $js_config_salts_set . $config;
+    $config = $config . $js_config_salts_set;
     // Write the config file to disk.
     file_put_contents($config_path, $config);
     // Restart the script to use the new salts for installation.
     js_log("Salts set, restarting");
     js_restart_init_script();
+}
+
+function js_update_fastcgi_params() {
+    $file_path = "/app/code/nginx/fastcgi.conf";
+    $config = file_get_contents($file_path);
+    $is_https = js_domain_is_https();
+    js_log("Turning " . ($is_https? "on": "off") . " fastcgi HTTPS config");
+    $param_regx = "/fastcgi_param\s+HTTPS\s+\"(on|off)\";/";
+    $replacement = "fastcgi_param HTTPS \"" . ($is_https? "on": "off") . "\";";
+    if (!preg_match($param_regx, $config)) {
+        $new_config = $config . "\n" . $replacement;
+    } else {
+        $new_config = preg_replace($param_regx, $replacement, $config);
+    }
+    file_put_contents($file_path, $new_config);
 }
 
 call_user_func(function() {
@@ -569,6 +584,9 @@ call_user_func(function() {
             js_install_wp();
         }
     }
+
+    // Configure whether to say to WordPress if we use https or not.
+    js_update_fastcgi_params();
 
     // Enforce wordpress configuration by environment.
     js_sync_wp_with_env();

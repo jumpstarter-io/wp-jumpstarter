@@ -118,14 +118,6 @@ add_action("login_footer", function() {
     <?php
 });
 
-function js_https_preg_regx() {
-    return "/^https/";
-}
-
-function js_domain_is_https() {
-    return preg_match(js_https_preg_regx(), js_env_get_siteurl());
-}
-
 // Filter for correctly determining whether a url should be using HTTPS or HTTP.
 // Currently the WordPress engine replaces the url scheme if it detects that the
 // global $_SERVER['HTTPS'] is set to "on" or 1. This works fine for auto configured
