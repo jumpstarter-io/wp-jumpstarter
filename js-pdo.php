@@ -7,6 +7,10 @@
  * Tested with WP sqlite integration version 1.7.
  */
 
+// Don't load directly.
+if (!defined("ABSPATH"))
+    die("-1");
+
 require_once dirname(__FILE__) . "/../sqlite-integration/pdoengine.class.php";
 require_once dirname(__FILE__) . "/../sqlite-integration/pdodb.class.php";
 

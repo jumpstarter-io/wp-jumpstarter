@@ -13,6 +13,7 @@ if (!defined("ABSPATH"))
     die("-1");
 
 require_once(dirname(__FILE__) . "/jswp-env.php");
+require_once(dirname(__FILE__) . "/jswp-util.php");
 
 // Only allow full access to plugin activation/deactivation from cli.
 if (php_sapi_name() !== "cli") {
@@ -77,20 +78,21 @@ function js_route_reflected_login() {
     exit;
 }
 
-function js_request_is($type) {
-    return strtolower($_SERVER["REQUEST_METHOD"]) == strtolower($type);
-}
-
 add_action('login_init', function() {
     // On get request with "reflected-login" set we want to redirect
     // the request to the js reflected-login page.
     if (js_request_is("GET") && isset($_GET["reflected-login"]))
         return js_route_reflected_login();
+    $err_key = "jumpstarter-error";
+    if (js_request_is("POST") && isset($_POST[$err_key]) && $_POST[$err_key] === "insecure-domain") {
+        wp_redirect("/wp-login.php?insecure-domain");
+        exit;
+    }
     // Attempt to login automatically via jumpstarter token at /wp-login.php
     if (!js_request_is("POST") || !isset($_POST["jumpstarter-auth-token"]))
         return;
     $z = $_POST["jumpstarter-auth-token"];
-    if (!js_env_token_auth_verify($z))
+    if (!js_domain_is_https() || !js_env_token_auth_verify($z))
         wp_die(__("Jumpstarter login failed: authorization failed (old token?)."));
     $user = get_user_by("login", "admin");
     if (is_object($user) && ($user instanceof WP_User)) {
@@ -103,18 +105,39 @@ add_action('login_init', function() {
 });
 
 add_action("login_footer", function() {
-    $login_url = js_env_get_value("ident.user.login_url");
+    $login_url = js_domain_is_https()? js_env_get_value("ident.user.login_url"): "#";
+    $site_url = "https://jumpstarter.io/site/" . js_env_get_value("ident.container.id");
+    $profile_url = "https://" . js_env_get_value("settings.core.auto-domain") . "/wp-admin/profile.php";
     ?>
-        <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
-            <a target="_parent" href="<?php _e($login_url) ?>">
-                Login with Jumpstarter
-            </a>
-        </div>
-        <script type="text/javascript">
-            var jsl = document.getElementById("js-login");
-            var lgf = document.getElementById("loginform");
-            lgf.appendChild(jsl);
-        </script>
+    <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
+        <a target="_parent" href="<?php _e($login_url) ?>">
+            Login with Jumpstarter
+        </a>
+    </div>
+    <script type="text/javascript">
+        var jsl = document.getElementById("js-login");
+        var lgf = document.getElementById("loginform");
+        lgf.appendChild(jsl);
+    </script>
+    <?php if (!js_domain_is_https()): ?>
+    <div id="js-insecure-domain" style="display: none;">
+        <h2>Insecure Domain</h2>
+        <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your login credentials are safe during login. Therefore automatic login has been disabled for this site.</p>
+        <p>If you haven't set a password yet, please follow these steps:</p>
+        <ul>
+            <li>Go to your <a href="<?php _e($site_url) ?>" target="_new">site</a></li>
+            <li>Remove all domains</li>
+            <li>Login using automatic login</li>
+            <li>Set your password by navigating to your <a href="<?php _e($profile_url) ?>">profile</a></li>
+            <li>Re-add your domain</li>
+        </ul>
+        <p>When the above steps are completed you should be able to log in to your WordPress site. Beware though that your communication with the site won't be secure.</p>
+    </div>
+    <?php
+        js_register("script", "jswp-get-params", "jswp-get-params.js", false);
+        js_enqueue("script", "jswp-login", "jswp-login.js", array("jquery", "jswp-get-params"));
+        js_enqueue("style", "jswp-login-css", "jswp-login.css", false);
+    endif; ?>
     <?php
 });
 

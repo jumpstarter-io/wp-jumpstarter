@@ -1,6 +1,11 @@
 <?php
 
+// Don't load directly.
+if (!defined("ABSPATH"))
+    die("-1");
+
 require_once("/app/code/js-php-env/js-env.php");
+require_once(dirname(__FILE__) . "/jswp-util.php");
 
 define("JSWP_ENV_PATH", "/app/code/wp-env.json");
 define("JSWP_ENV_APC_KEY", "wp-env");
@@ -35,15 +40,4 @@ function jswp_env_get_options() {
 
 function jswp_env_get_disabled_capabilities() {
     return jswp_env_get_val_or_array("disabled_capabilities");
-}
-
-function js_https_preg_regx() {
-    return "/^https/";
-}
-
-function js_domain_is_https() {
-    static $is_https = null;
-    if ($is_https === null)
-        $is_https = preg_match(js_https_preg_regx (), js_env_get_siteurl ());
-    return $is_https;
 }

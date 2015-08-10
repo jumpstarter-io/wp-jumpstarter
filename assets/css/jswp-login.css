@@ -1,0 +1,27 @@
+
+#js-insecure-domain {
+    width: 520px;
+    position: relative;
+    left: -120px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.13);
+    padding: 10px 20px 20px 20px;
+}
+
+#js-insecure-domain h2 {
+    margin-top: 10px;
+}
+
+#js-insecure-domain p {
+    text-justify: distribute;
+    margin-top: 10px;
+}
+
+#js-insecure-domain ul {
+    padding-left: 28px;
+    margin-top: 10px;
+}
+
+#js-insecure-domain ul li {
+    line-height: 26px;
+}
