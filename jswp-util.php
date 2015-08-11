@@ -19,7 +19,6 @@ function js_request_is($type) {
     return strtolower($_SERVER["REQUEST_METHOD"]) == strtolower($type);
 }
 
-///
 function js_filemtime($file_path) {
     return filemtime(plugin_dir_path(__FILE__) . $file_path);
 }

@@ -122,7 +122,9 @@ add_action("login_footer", function() {
     <?php if (!js_domain_is_https()): ?>
     <div id="js-insecure-domain" style="display: none;">
         <h2>Insecure Domain</h2>
-        <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your login credentials are safe during login. Therefore automatic login has been disabled for this site.</p>
+        <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your login credentials are safe during login and
+          therefore automatic login has been disabled for this site. If you want to continue using this domain you are free to do so, but beware that
+          your communication with the site will not be secure.</p>
         <p>If you haven't set a password yet, please follow these steps:</p>
         <ul>
             <li>Go to your <a href="<?php _e($site_url) ?>" target="_new">site</a></li>
@@ -131,7 +133,7 @@ add_action("login_footer", function() {
             <li>Set your password by navigating to your <a href="<?php _e($profile_url) ?>">profile</a></li>
             <li>Re-add your domain</li>
         </ul>
-        <p>When the above steps are completed you should be able to log in to your WordPress site. Beware though that your communication with the site won't be secure.</p>
+        <p>When the above steps are completed you should be able to log in to your WordPress site.</p>
     </div>
     <?php
         js_register("script", "jswp-get-params", "jswp-get-params.js", false);
