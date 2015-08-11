@@ -1,7 +1,7 @@
 <?php
 
 // Don't load directly.
-if (!defined("ABSPATH"))
+if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
 function js_https_preg_regx() {

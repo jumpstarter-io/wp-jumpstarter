@@ -1,7 +1,7 @@
 <?php
 
 // Don't load directly.
-if (!defined("ABSPATH"))
+if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
 require_once("/app/code/js-php-env/js-env.php");
