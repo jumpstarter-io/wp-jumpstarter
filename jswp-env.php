@@ -1,10 +1,10 @@
 <?php
 
-// Don't load directly.
+// Don't load directly unless in cli.
 if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
-require_once("/app/code/js-php-env/js-env.php");
+require_once(dirname(__FILE__) . "/js-env.php");
 require_once(dirname(__FILE__) . "/jswp-util.php");
 
 define("JSWP_ENV_PATH", "/app/code/wp-env.json");

@@ -8,7 +8,11 @@
  * php /app/code/src/wp-content/plugins/jumpstarter/js-init.php
  */
 
-require_once("jswp-env.php");
+// We don't want to run unless invoked by cli.
+if (php_sapi_name() !== "cli")
+    return;
+
+require_once(dirname(__FILE__) . "/jswp-env.php");
 
 // Log to stderr.
 function js_log($msg) {
@@ -514,10 +518,6 @@ function js_update_fastcgi_params() {
 }
 
 call_user_func(function() {
-    // We don't want to run unless invoked by cli.
-    if (php_sapi_name() !== "cli")
-        return;
-
     // Check for previous failed installation.
     $db_dir = js_db_dir();
     if (is_link($db_dir)) {

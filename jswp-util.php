@@ -1,6 +1,6 @@
 <?php
 
-// Don't load directly.
+// Don't load directly unless in cli.
 if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
