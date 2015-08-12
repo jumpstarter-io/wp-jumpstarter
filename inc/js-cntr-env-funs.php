@@ -137,4 +137,16 @@ call_user_func(function() {
         if ($theme->stylesheet === $default_theme || $theme->template === $default_theme)
             wp_die(_("You are not allowed to delete this theme."));
     }
+    // Check if we got a faulty HTTP_HOST in the request.
+    if (php_sapi_name() != "cli") {
+        $curr_domain_raw = js_env_get_siteurl();
+        $curr_domain = preg_replace("/^https?:\/\//", "", $curr_domain_raw);
+        if (strpos($_SERVER["HTTP_HOST"], $curr_domain) === false) {
+            // The HTTP_HOST in didn't match the configured domain.
+            // Redirect to the currently configured domain instead.
+            $red_addr = $curr_domain_raw . $_SERVER["REQUEST_URI"];
+            header("Location: $red_addr", true, 302);
+            exit();
+        }
+    }
 });
