@@ -22,7 +22,7 @@ function js_maybe_read_env($env_path) {
     if (js_is_container_env()) {
         // We're running in a Jumpstarter container so
         return json_decode(file_get_contents($env_path), true);
-    } else if (!js_is_container() && $env_path != JS_ENV_PATH) {
+    } else if (!js_is_container_env() && $env_path != JS_ENV_PATH) {
         return array();
     }
     // If ABSPATH isn't defined at this stage, we can't really return
