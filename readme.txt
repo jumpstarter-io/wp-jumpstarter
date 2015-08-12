@@ -1,6 +1,6 @@
 === Jumpstarter ===
 Contributors: jumpstarter, zeuclas
-Tags: jumpstarter
+Tags: jumpstarter, url handling
 Requires at least: 4.2
 Tested up to: 4.2.5-alpha
 Stable tag: 17.0
@@ -64,31 +64,21 @@ The plugin takes care of the following:
 
 == Installation ==
 
-The installation preconditions and file system layout requirements are all satisfied in the Jumpstarter container environment.
-
-= Preconditions =
-* WordPress _must_ be installed in a Jumpstarter container.
-* SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
-* `DB_DIR` must defined as `"/app/code/wp-db"` in `wp-config.php`.
-* The `/wp-content/database` folder must not exist as it's a security hazard.
-
-= Filesystem layout requirements =
-
-* `/app/env.json` must exist and look like [this](https://github.com/jumpstarter-io/help/wiki/env.json).
-* `/app/code/nginx/fastcgi.conf` must exist and be used by nginx.
-* The WordPress SQLite database must be placed in `/app/code/wp-db`.
-* WordPress should be installed in `/app/code/src/`.
-
 = Installation Procedure =
 1. Unzip into `/wp-content/plugins/` directory.
+2. Activate the plugin in the WordPress admin panel.
 
 == Frequently Asked Questions ==
 
 = Can this plugin be used outside of the Jumpstarter environment? =
 
-Short answer: _no_.
+Yes. It is possible to use the plugin in any WordPress installation. However, when not running in
+a Jumpstarter container environment the functionality of the plugin is reduced.
 
-Long answer: Yes. It is possible to use this plugin anywhere as long as the file system layout requirements are fulfilled.
+Features when not running in a Jumpstarter container:
+
+- Hooks in on `set_url_scheme` and uses the env to determine if the url should use http or https.
+- Rewrites urls passed to `wp_enqueue_script` and `wp_enqueue_style` depending on if SSL is on or not.
 
 == Changelog ==
 
@@ -96,6 +86,7 @@ Long answer: Yes. It is possible to use this plugin anywhere as long as the file
 * Remove the last restrictions on user plugin management.
 * Add help on login page for the event of using a non-secure domain.
 * Improve code documentation.
+* Add compatibility mode for non Jumpstarter container environments.
 
 = 16.0 =
 * Open up the plugin for the new Jumpstarter architecture changes (increase the freedom).
