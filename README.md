@@ -1,10 +1,6 @@
 WordPress Jumpstarter
 =====================
 
-The official Jumpstarter plugin for WordPress integration. It primarily allows you to sell Themes without writing any extra code for WordPress.
-
-Read [the getting started guide here](https://github.com/jumpstarter-io/help/wiki/Getting-Started:-PHP-&-Wordpress-With-Jumpstarter-Console).
-
 ### How to install
 
 The plugin should be placed in `/wp-content/plugins/jumpstarter`.
@@ -15,10 +11,8 @@ This plugin has some expectations that must be fulfilled:
 
 * SQLite must be used as a database with [the sqlite-integration plugin](https://wordpress.org/plugins/sqlite-integration/).
 * The `js-init.php` script must be run successfully (return exit code 0) before the HTTP port is opened and the WordPress site can accept requests.
-* TLS must be used (HTTPS).
 * `DB_DIR` must be set to `"/app/code/wp-db"` in `wp-config.php`.
 * The `/wp-content/database` folder must not exist as it's a security hazard.
-* The user must not be able to change the theme base defined theme.
 
 ### What init does
 
