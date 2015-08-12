@@ -11,8 +11,10 @@
 if (!defined("ABSPATH"))
     die("-1");
 
-require_once dirname(__FILE__) . "/../sqlite-integration/pdoengine.class.php";
-require_once dirname(__FILE__) . "/../sqlite-integration/pdodb.class.php";
+$sqlite_rel_path = "/../../sqlite-integration/";
+
+require_once(dirname(__FILE__) . $sqlite_rel_path . "pdoengine.class.php");
+require_once(dirname(__FILE__) . $sqlite_rel_path . "pdodb.class.php");
 
 if (!class_exists("JSPDOEngine") && !class_exists("JSPDODB")) {
 

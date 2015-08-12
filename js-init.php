@@ -12,7 +12,7 @@
 if (php_sapi_name() !== "cli")
     return;
 
-require_once(dirname(__FILE__) . "/jswp-env.php");
+require_once(dirname(__FILE__) . "/inc/jswp-env.php");
 
 // Log to stderr.
 function js_log($msg) {
@@ -100,7 +100,7 @@ function js_run_install_scripts() {
         $GLOBALS["js_install_scripts"][] = array("name" => $name, "fn" => $fn);
     }
     foreach(glob("/app/code/js-install-scripts/*.php") as $file_path) {
-        require_once $file_path;
+        require_once($file_path);
     }
     foreach($js_install_scripts as $sc_arr) {
         js_log("running install script: $sc_arr[name]");
@@ -391,7 +391,7 @@ function js_use_js_pdo() {
     static $using_js_pdo = false;
     if ($using_js_pdo === true)
         return;
-    require_once dirname(__FILE__) . "/js-pdo.php";
+    require_once(dirname(__FILE__) . "/inc/js-pdo.php");
     unset($GLOBALS["wpdb"]);
     $GLOBALS["wpdb"] = new JSPDODB();
     // Initialize the new db connection with the wp table information.

@@ -1,19 +1,21 @@
 <?php
 /**
- * Plugin Name: Jumpstarter
- * Plugin URI: https://github.com/jumpstarter-io/
- * Description: Wordpress Jumpstarter integration.
  * Author: Jumpstarter
  * Author URI: https://jumpstarter.io/
- * License: Public Domain
+ * Description: Jumpstarter WordPress integration plugin that simplifies running WordPress in a container environment.
+ * Plugin Name: Jumpstarter
+ * Plugin URI: https://github.com/jumpstarter-io/wp-jumpstarter
+ * Version: 16.5
+ * License: Unlicense
+ * License URI: http://unlicense.org
  */
 
 // Don't load directly.
 if (!defined("ABSPATH"))
     die("-1");
 
-require_once(dirname(__FILE__) . "/jswp-env.php");
-require_once(dirname(__FILE__) . "/jswp-util.php");
+require_once(dirname(__FILE__) . "/inc/jswp-env.php");
+require_once(dirname(__FILE__) . "/inc/jswp-util.php");
 
 // Sandboxed Jumpstarter WordPress user.
 class JS_WP_User extends WP_User {

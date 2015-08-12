@@ -28,13 +28,14 @@ function js_file_url($file_path) {
 }
 
 function js_plugin_file_path($type, $file_name) {
+    $assets_rel_path = "../assets/";
     switch($type) {
         case "script":
-            return "/assets/js/" . $file_name;
+            return $assets_rel_path . "js/" . $file_name;
         case "style":
-            return "/assets/css/" . $file_name;
+            return $assets_rel_path . "css/" . $file_name;
         case "image":
-            return "/assets/images/" . $file_name;
+            return $assets_rel_path . "images/" . $file_name;
         default:
             throw new Exception("invalid asset: " . $type);
     }

@@ -4,6 +4,9 @@
 if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
+if (!file_exists("/app/env.json"))
+    return;
+
 define("JS_ENV_PATH", "/app/env.json");
 define("JS_ENV_APC_KEY", "jumpstarter-env");
 
