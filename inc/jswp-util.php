@@ -4,14 +4,17 @@
 if (php_sapi_name() !== "cli" && !defined("ABSPATH"))
     die("-1");
 
+require_once(dirname(__FILE__) . "/jswp-env.php");
+
 function js_https_preg_regx() {
     return "/^https/";
 }
 
+// Checks if the currently assigned domain is using https.
 function js_domain_is_https() {
     static $is_https = null;
     if ($is_https === null)
-        $is_https = preg_match(js_https_preg_regx (), js_env_get_siteurl ());
+        $is_https = preg_match(js_https_preg_regx(), js_env_get_siteurl());
     return $is_https;
 }
 
@@ -41,6 +44,7 @@ function js_plugin_file_path($type, $file_name) {
     }
 }
 
+// Convenience function for registering scripts and styles.
 function js_register($type, $handle, $file, $deps) {
     $file_path = js_plugin_file_path($type, $file);
     if ($type === "script") {
@@ -50,6 +54,7 @@ function js_register($type, $handle, $file, $deps) {
     }
 }
 
+// Convenience function for enqueueing scripts and styles.
 function js_enqueue($type, $handle, $file, $deps = false) {
     $file_path = js_plugin_file_path($type, $file);
     if ($type === "script") {

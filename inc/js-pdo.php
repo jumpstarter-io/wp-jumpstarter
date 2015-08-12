@@ -4,7 +4,7 @@
  * JS subclasses of the WP sqlite integration package to enable arbitrarily
  * long transactions, ie: more than one statement.
  *
- * Tested with WP sqlite integration version 1.7.
+ * Tested with WP sqlite integration version 1.8.1
  */
 
 // Don't load directly.
