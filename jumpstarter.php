@@ -15,39 +15,6 @@ if (!defined("ABSPATH"))
 require_once(dirname(__FILE__) . "/jswp-env.php");
 require_once(dirname(__FILE__) . "/jswp-util.php");
 
-// Only allow full access to plugin activation/deactivation from cli.
-if (php_sapi_name() !== "cli") {
-    // Allow all plugin activation/deactivation except for Jumpstarter core plugins.
-    foreach (array("activate_plugin" => "activate", "deactivate_plugin" => "deactivate") as $action => $action_name) {
-        add_action($action, function($plugin_key) use ($action_name) {
-            if (in_array($plugin_key, jswp_env_core_plugins())) {
-                wp_die(__("You are not allowed to $action_name this plugin."));
-            }
-        }, 1, 1);
-    }
-    // Filter out the Jumpstarter core plugins from listing as we don't want the
-    // user to think these can be activated/deactivated.
-    add_filter("all_plugins", function($plugins) {
-        foreach (jswp_env_core_plugins() as $core_plugin) {
-            unset($plugins[$core_plugin]);
-        }
-        return $plugins;
-    }, 100, 1);
-}
-
-// Add a filter for outgoing requests that prevents WordPress from checking for
-// updates for our core plugins.
-add_filter("http_request_args", function($r, $url) {
-    if (strpos($url, "api.wordpress.org/plugins/update-check") !== false) {
-        $update_plugins = json_decode($r["body"]["plugins"], true);
-        foreach (jswp_env_core_plugins() as $plugin) {
-            unset($update_plugins["plugins"][$plugin]);
-        }
-        $r["body"]["plugins"] = json_encode($update_plugins);
-    }
-    return $r;
-}, 100, 2);
-
 // Sandboxed Jumpstarter WordPress user.
 class JS_WP_User extends WP_User {
     public function __construct(WP_User $raw_wp_user) {
