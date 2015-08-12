@@ -108,11 +108,12 @@ add_action("login_footer", function() {
     $login_url = js_domain_is_https()? js_env_get_value("ident.user.login_url"): "#";
     $site_url = "https://jumpstarter.io/site/" . js_env_get_value("ident.container.id");
     $profile_url = "https://" . js_env_get_value("settings.core.auto-domain") . "/wp-admin/profile.php";
+    $insecure_domain_wiki_url = "https://github.com/jumpstarter-io/help/wiki/WordPress-with-insecure-domain";
     ?>
     <div id="js-login" style="clear: both; padding-top: 20px; margin-bottom: -15px;">
-        <a target="_parent" href="<?php _e($login_url) ?>">
-            Login with Jumpstarter
-        </a>
+        <a id="js-login-read-more" href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Unable to login?</a>
+        <br/><br/>
+        <a id="js-login-reflected" target="_parent" href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
     </div>
     <script type="text/javascript">
         var jsl = document.getElementById("js-login");
@@ -134,6 +135,7 @@ add_action("login_footer", function() {
             <li>Re-add your domain</li>
         </ul>
         <p>Upon completion you should be able to log in to your WordPress site.</p>
+        <p><a href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Read more</a></p>
     </div>
     <?php
         js_register("script", "jswp-get-params", "jswp-get-params.js", false);

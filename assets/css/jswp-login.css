@@ -26,3 +26,7 @@
 #js-insecure-domain ul li {
     line-height: 26px;
 }
+
+#js-login a.disabled {
+    color: #ff3333;
+}
