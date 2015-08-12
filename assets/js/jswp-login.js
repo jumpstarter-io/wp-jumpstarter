@@ -1,5 +1,7 @@
 
 jQuery(document).ready(function() {
+    jQuery("#loginform").append(jQuery("#js-login").detach());
+    jQuery("#js-login").show();
     var loginHref = jQuery("#js-login-reflected").attr("href");
     var insecureDomain = jsGetParam("insecure-domain");
     if (loginHref !== "#" && !insecureDomain)
