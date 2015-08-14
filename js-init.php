@@ -151,7 +151,7 @@ function js_load_theme_functions() {
     try {
         foreach ($functions_paths as $functions_path) {
             if (file_exists($functions_path)) {
-                include_once($functions_path);
+                require_once($functions_path);
             }
         }
     } catch (Exception $ex) {
@@ -432,8 +432,7 @@ function js_sync_wp_with_env() {
     js_sync_plugins();
     // Apply (sync) wordpress theme from env.
     js_sync_theme();
-    // Allow for custom theme hooks to be run later on.
-    js_load_theme_functions();
+    // No need to load the theme functions since it's already done by the wp include.
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
     foreach (jswp_env_get_options() as $option => $value) {
