@@ -318,6 +318,10 @@ function js_install_wp() {
     js_sync_theme();
     // Try to load the theme functions.php to enable running of install hook.
     js_load_theme_functions();
+    // Tell the theme that it's alive.
+    do_action("after_setup_theme");
+    // Trigger any admin_init listeners that're waiting for theme initialization.
+    do_action("admin_init");
     // Set the container key.
     js_set_db_container_id();
     // Trigger jumpstarter install hooks.
