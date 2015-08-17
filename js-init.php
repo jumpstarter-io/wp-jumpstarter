@@ -117,6 +117,7 @@ function js_run_install_scripts() {
 }
 
 function js_sync_theme() {
+    do_action("before_setup_theme");
     $stylesheet = get_option("stylesheet");
     $env_stylesheet = jswp_env_get_theme();
     // If were not installing and the user has changed stylesheet, then that's fine.
@@ -436,6 +437,10 @@ function js_sync_wp_with_env() {
     js_sync_plugins();
     // Apply (sync) wordpress theme from env.
     js_sync_theme();
+    // Tell the theme we're up and running.
+    do_action("after_setup_theme");
+    // Notify admin_init listeners.
+    do_action("admin_init");
     // No need to load the theme functions since it's already done by the wp include.
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
