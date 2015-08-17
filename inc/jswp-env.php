@@ -129,7 +129,8 @@ function js_env_get_siteurl() {
         }
         if (empty($preferred["name"]))
             throw new Exception("corrupt env: preferred domain has no name");
-        return ($domain["secure"]? "https": "http") . "://" . $preferred["name"];
+        if ($preferred["preferred"])
+            return ($domain["secure"]? "https": "http") . "://" . $preferred["name"];
     }
     // Fall back to auto domain (always encrypted).
     $auto_domain = js_env_get_value("settings.core.auto-domain");
