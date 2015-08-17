@@ -120,10 +120,14 @@ function js_sync_theme() {
     do_action("before_setup_theme");
     $stylesheet = get_option("stylesheet");
     $env_stylesheet = jswp_env_get_theme();
+    if (!defined("WP_INSTALLING") && $stylesheet === $env_stylesheet) {
+        js_log("using pre defined theme [$stylesheet]");
+        return false;
+    }
     // If were not installing and the user has changed stylesheet, then that's fine.
     if (!defined("WP_INSTALLING") && $stylesheet !== $env_stylesheet) {
         js_log("using user defined theme [$stylesheet]");
-        return;
+        return false;
     }
     if (is_string($env_stylesheet)) {
         js_log("setting theme [$env_stylesheet]");
@@ -139,6 +143,7 @@ function js_sync_theme() {
     if (!defined('TEMPLATEPATH')) {
         define(TEMPLATEPATH, get_template_directory());
     }
+    return true;
 }
 
 function js_load_theme_functions() {
@@ -436,9 +441,10 @@ function js_sync_wp_with_env() {
     // Apply (sync) wordpress plugins from env.
     js_sync_plugins();
     // Apply (sync) wordpress theme from env.
-    js_sync_theme();
-    // Tell the theme we're up and running.
-    do_action("after_setup_theme");
+    if (js_sync_theme()) {
+        // Tell the theme we're up and running.
+        do_action("after_setup_theme");
+    }
     // Notify admin_init listeners.
     do_action("admin_init");
     // No need to load the theme functions since it's already done by the wp include.
