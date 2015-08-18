@@ -148,6 +148,14 @@ function js_sync_theme() {
     return true;
 }
 
+function js_maybe_run_theme_admin_init() {
+    $stylesheet = get_option("stylesheet");
+    $env_stylesheet = jswp_env_get_theme();
+    if ($stylesheet === $env_stylesheet && jswp_env_get_value("run_theme_init_hooks")) {
+        do_action("admin_init");
+    }
+}
+
 function js_load_theme_functions() {
     // If the theme we're using is a child theme we should try to load
     // the parents functions.php first.
@@ -460,10 +468,7 @@ function js_sync_wp_with_env() {
             do_action("after_setup_theme");
         }
     }
-    if (jswp_env_get_value("run_theme_init_hooks")) {
-        // Notify admin_init listeners.
-        do_action("admin_init");
-    }
+    js_maybe_run_theme_admin_init();
     // No need to load the theme functions since it's already done by the wp include.
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
