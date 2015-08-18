@@ -117,7 +117,9 @@ function js_run_install_scripts() {
 }
 
 function js_sync_theme() {
-    do_action("before_setup_theme");
+    if (jswp_env_get_value("run_theme_init_hooks")) {
+        do_action("before_setup_theme");
+    }
     $stylesheet = get_option("stylesheet");
     $env_stylesheet = jswp_env_get_theme();
     if (!defined("WP_INSTALLING") && $stylesheet === $env_stylesheet) {
@@ -288,6 +290,11 @@ function js_get_db_container_id() {
     return get_option(js_container_option_key());
 }
 
+function js_set_current_user() {
+    global $current_user;
+    $current_user = get_user_by("login", "admin");
+}
+
 function js_install_wp() {
     js_install_set_defines();
     js_install_init_tmp_db();
@@ -314,6 +321,8 @@ function js_install_wp() {
     js_log("running wordpress installer with name:[$user_name], email:[$user_email], password:[$user_password]");
     wp_install($blog_title, $user_name, $user_email, true, $deprecated, $user_password, $language);
     js_install_update_user_info();
+    // Set the new current user.
+    js_set_current_user();
     // Activate core and developer specified plugins.
     js_log("activate plugins");
     js_sync_plugins();
@@ -324,10 +333,12 @@ function js_install_wp() {
     js_sync_theme();
     // Try to load the theme functions.php to enable running of install hook.
     js_load_theme_functions();
-    // Tell the theme that it's alive.
-    do_action("after_setup_theme");
-    // Trigger any admin_init listeners that're waiting for theme initialization.
-    do_action("admin_init");
+    if (jswp_env_get_value("run_theme_init_hooks")) {
+        // Tell the theme that it's alive.
+        do_action("after_setup_theme");
+        // Trigger any admin_init listeners that're waiting for theme initialization.
+        do_action("admin_init");
+    }
     // Set the container key.
     js_set_db_container_id();
     // Trigger jumpstarter install hooks.
@@ -436,6 +447,8 @@ function js_sync_wp_with_env() {
     } else {
         js_log("no siteurl change detected, keeping [$wp_siteurl]");
     }
+    // Set the current user.
+    js_set_current_user();
     // Order the plugins list if needed.
     js_sync_plugins_load_order();
     // Apply (sync) wordpress plugins from env.
@@ -443,10 +456,14 @@ function js_sync_wp_with_env() {
     // Apply (sync) wordpress theme from env.
     if (js_sync_theme()) {
         // Tell the theme we're up and running.
-        do_action("after_setup_theme");
+        if (jswp_env_get_value("run_theme_init_hooks")) {
+            do_action("after_setup_theme");
+        }
     }
-    // Notify admin_init listeners.
-    do_action("admin_init");
+    if (jswp_env_get_value("run_theme_init_hooks")) {
+        // Notify admin_init listeners.
+        do_action("admin_init");
+    }
     // No need to load the theme functions since it's already done by the wp include.
     // Apply (sync) wordpress options from env.
     js_log("syncing options with env");
