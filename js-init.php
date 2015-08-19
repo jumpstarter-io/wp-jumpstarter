@@ -157,6 +157,9 @@ function js_maybe_run_theme_admin_init() {
 }
 
 function js_load_theme_functions() {
+    if (jswp_env_get_value("load_theme_functions") === false) {
+        return;
+    }
     // If the theme we're using is a child theme we should try to load
     // the parents functions.php first.
     $stylesheet_dir = get_stylesheet_directory();
@@ -212,7 +215,7 @@ function js_sync_plugins() {
     // If we're installing we make sure that all installed plugins get activated. Later
     // on it's up to the user to say if a plugin should be activated or not.
     if (defined("WP_INSTALLING")) {
-        $plugins = array_merge($plugins, array_keys($installed_plugins));
+        $plugins = array_unique(array_merge($plugins, array_keys($installed_plugins)));
     }
     foreach ($plugins as $plugin_key) {
         if (!isset($installed_plugins[$plugin_key])) {
