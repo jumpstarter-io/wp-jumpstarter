@@ -593,6 +593,10 @@ call_user_func(function() {
             js_install_init_tmp_db();
             $db_dir = js_db_dir();
             js_eexec("cp -r $init_state_db_dir/. " . escapeshellarg("$db_dir/"));
+            if (file_exists("$init_state_dir/uploads")) {
+                $uploads_pdir = "/app/code/src/wp-content/";
+                js_eexec("cp -r $init_state_dir/uploads $uploads_pdir");
+            }
             js_include_wp();
             js_use_js_pdo();
             try {
