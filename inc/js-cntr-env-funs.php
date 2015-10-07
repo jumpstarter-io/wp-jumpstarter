@@ -83,45 +83,43 @@ add_action('login_init', function() {
     wp_die(__("Jumpstarter login failed: no valid account found."));
 });
 
-add_action("login_footer", function() {
-    $login_action = isset($_REQUEST["action"]) ? $_REQUEST["action"] : "login";
-    // We only want to show the extra login footer on the actual login page.
-    if ($login_action != "login")
-        return;
-    $login_url = js_domain_is_https()? js_env_get_value("ident.user.login_url"): "#";
-    $site_url = "https://jumpstarter.io/site/" . js_env_get_value("ident.container.id");
-    $profile_url = "https://" . js_env_get_value("settings.core.auto-domain") . "/wp-admin/profile.php";
-    $insecure_domain_wiki_url = "https://github.com/jumpstarter-io/help/wiki/WordPress-with-insecure-domain";
-    ?>
-    <div id="js-login" style="display: none; clear: both; padding-top: 20px; margin-bottom: -15px;">
-        <a id="js-login-read-more" href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Unable to login?</a>
-        <br/><br/>
-        <a id="js-login-reflected" target="_parent" href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
-    </div>
-    <?php if (!js_domain_is_https()): ?>
-    <div id="js-insecure-domain" style="display: none;">
-        <h2>Insecure Domain</h2>
-        <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your credentials are safe during login and
-          therefore automatic login has been disabled for this site. If you want to continue using this domain you are free to do so, but beware that
-          your communication with the site will not be secure.</p>
-        <p>If you haven't set a password yet, please follow these steps:</p>
-        <ul>
-            <li>Go to your <a href="<?php _e($site_url) ?>" target="_new">site</a></li>
-            <li>Remove all domains</li>
-            <li>Login using automatic login</li>
-            <li>Set your password by navigating to your <a href="<?php _e($profile_url) ?>">profile</a></li>
-            <li>Re-add your domain</li>
-        </ul>
-        <p>Upon completion you should be able to log in to your WordPress site.</p>
-        <p><a href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Read more</a></p>
-    </div>
-    <?php
-    endif;
-    ?>
-    <?php
-    js_register("script", "jswp-get-params", "jswp-get-params.js", false);
-    js_enqueue("script", "jswp-login", "jswp-login.js", array("jquery", "jswp-get-params"));
-    js_enqueue("style", "jswp-login-css", "jswp-login.css", false);
+add_action("login_form_login", function() {
+    add_action("login_footer", function() {
+        $login_url = js_domain_is_https()? js_env_get_value("ident.user.login_url"): "#";
+        $site_url = "https://jumpstarter.io/site/" . js_env_get_value("ident.container.id");
+        $profile_url = "https://" . js_env_get_value("settings.core.auto-domain") . "/wp-admin/profile.php";
+        $insecure_domain_wiki_url = "https://github.com/jumpstarter-io/help/wiki/WordPress-with-insecure-domain";
+        ?>
+        <div id="js-login" style="display: none; clear: both; padding-top: 20px; margin-bottom: -15px;">
+            <a id="js-login-read-more" href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Unable to login?</a>
+            <br/><br/>
+            <a id="js-login-reflected" target="_parent" href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
+        </div>
+        <?php if (!js_domain_is_https()): ?>
+        <div id="js-insecure-domain" style="display: none;">
+            <h2>Insecure Domain</h2>
+            <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your credentials are safe during login and
+              therefore automatic login has been disabled for this site. If you want to continue using this domain you are free to do so, but beware that
+              your communication with the site will not be secure.</p>
+            <p>If you haven't set a password yet, please follow these steps:</p>
+            <ul>
+                <li>Go to your <a href="<?php _e($site_url) ?>" target="_new">site</a></li>
+                <li>Remove all domains</li>
+                <li>Login using automatic login</li>
+                <li>Set your password by navigating to your <a href="<?php _e($profile_url) ?>">profile</a></li>
+                <li>Re-add your domain</li>
+            </ul>
+            <p>Upon completion you should be able to log in to your WordPress site.</p>
+            <p><a href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Read more</a></p>
+        </div>
+        <?php
+        endif;
+        ?>
+        <?php
+        js_register("script", "jswp-get-params", "jswp-get-params.js", false);
+        js_enqueue("script", "jswp-login", "jswp-login.js", array("jquery", "jswp-get-params"));
+        js_enqueue("style", "jswp-login-css", "jswp-login.css", false);
+    });
 });
 
 call_user_func(function() {
