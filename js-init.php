@@ -13,6 +13,7 @@ if (php_sapi_name() !== "cli")
     return;
 
 require_once(dirname(__FILE__) . "/inc/jswp-env.php");
+require_once(dirname(__FILE__) . "/inc/jswp-util.php");
 require_once(dirname(__FILE__) . "/inc/init/common.php");
 
 function js_install_wp() {
@@ -155,7 +156,7 @@ if (file_exists($db_dir)) {
     require_once(dirname(__FILE__) . "/inc/init/js-include-wp.php");
     $oid = js_get_db_container_id();
     $cid = js_env_get_value(js_env_container_id_key_path());
-    if ($oid !== $cid) {
+    if (js_is_short_id($oid) && $oid !== $cid) {
         js_log("container id changed from $oid to $cid");
         js_eexec("rm -rf " . escapeshellarg(js_db_dir()));
         js_restart_init_script();
