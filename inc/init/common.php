@@ -233,6 +233,8 @@ function js_update_siteurls($old_siteurl, $new_siteurl) {
     js_update_siteurl($old_siteurl, $new_siteurl, "wp_postmeta", "meta_id", array("meta_value"));
     // Update options with the new siteurl.
     js_update_siteurl($old_siteurl, $new_siteurl, "wp_options", "option_id", array("option_value"));
+    // Update legacy table wp_links.
+    js_update_siteurl($old_siteurl, $new_siteurl, "wp_links", "link_id", array("link_url"));
 }
 
 function js_get_siteurl() {
