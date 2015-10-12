@@ -63,3 +63,13 @@ function js_enqueue($type, $handle, $file, $deps = false) {
         wp_enqueue_style($handle, js_file_url($file_path), $deps, js_filemtime($file_path));
     }
 }
+
+function js_is_short_id($maybe_id) {
+    if (!is_string($maybe_id)) {
+        return false;
+    }
+    if (strlen($maybe_id) < 6 ||strlen($maybe_id) > 64) {
+        return false;
+    }
+    return preg_match("/^[a-z]{6,6}[0-9]*$/", $maybe_id) === 1;
+}
