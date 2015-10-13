@@ -171,6 +171,22 @@ function js_env_token_auth_verify($z) {
     return ($h === $h_challenge);
 }
 
+function js_env_token_auth_generate() {
+    // Fetch the container session_key.
+    $session_key = hex2bin(js_env_get_value("ident.container.session_key"));
+    // Create random salt.
+    $y = openssl_random_pseudo_bytes(32);
+    $e_raw = time() + 20;
+    // For some reason it doesn't seem like PHP wants to play nice with
+    // the "J" option for pack. Pack two uint32 nbo instead.
+    $e_nbo = pack("NN", 0, $e_raw);
+    // Create the hash signature that we validate against.
+    $h = hash("sha256", ($e_nbo . $y . $session_key), true);
+    // Compile the whole auth token.
+    $z = $e_nbo . $y . $h;
+    return bin2hex($z);
+}
+
 define("JSWP_ENV_PATH", "/app/code/wp-env.json");
 define("JSWP_ENV_APC_KEY", "wp-env");
 
