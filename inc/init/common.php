@@ -212,6 +212,9 @@ function rec_replace_string($search_string, $replacement, $data, $serialized = f
 }
 
 function js_update_siteurl($old_siteurl, $new_siteurl, $table_name, $id_column, $columns) {
+    if (function_exists("js_log")) {
+        js_log("updating table: $table_name");
+    }
     global $wpdb;
     $rows = $wpdb->get_results(sprintf("SELECT $id_column, %s from $table_name", implode(",", $columns)));
     foreach ($rows as $row) {
@@ -226,15 +229,16 @@ function js_update_siteurl($old_siteurl, $new_siteurl, $table_name, $id_column, 
 }
 
 function js_update_siteurls($old_siteurl, $new_siteurl) {
+    global $table_prefix;
     // Update post contents with the new siteurl. We do not update the GUID column as
     // this would cause feed readers to think that the post is new when already read.
-    js_update_siteurl($old_siteurl, $new_siteurl, "wp_posts", "ID", array("post_content"));
+    js_update_siteurl($old_siteurl, $new_siteurl, $table_prefix . "posts", "ID", array("post_content"));
     // Update postmeta with the new siteurl.
-    js_update_siteurl($old_siteurl, $new_siteurl, "wp_postmeta", "meta_id", array("meta_value"));
+    js_update_siteurl($old_siteurl, $new_siteurl, $table_prefix . "postmeta", "meta_id", array("meta_value"));
     // Update options with the new siteurl.
-    js_update_siteurl($old_siteurl, $new_siteurl, "wp_options", "option_id", array("option_value"));
+    js_update_siteurl($old_siteurl, $new_siteurl, $table_prefix . "options", "option_id", array("option_value"));
     // Update legacy table wp_links.
-    js_update_siteurl($old_siteurl, $new_siteurl, "wp_links", "link_id", array("link_url"));
+    js_update_siteurl($old_siteurl, $new_siteurl, $table_prefix . "links", "link_id", array("link_url"));
 }
 
 function js_get_siteurl() {
