@@ -95,22 +95,42 @@ add_action("login_form_login", function() {
             <br/><br/>
             <a id="js-login-reflected" target="_parent" href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
         </div>
-        <?php if (!js_domain_is_https()): ?>
+        <?php if (true): ?>
         <div id="js-insecure-domain" style="display: none;">
-            <h2>Insecure Domain</h2>
-            <p>This page was not loaded using HTTPS. As such Jumpstarter cannot ensure that your credentials are safe during login and
-              therefore automatic login has been disabled for this site. If you want to continue using this domain you are free to do so, but beware that
-              your communication with the site will not be secure.</p>
-            <p>If you haven't set a password yet, please follow these steps:</p>
-            <ul>
-                <li>Go to your <a href="<?php _e($site_url) ?>" target="_new">site</a></li>
-                <li>Remove all domains</li>
-                <li>Login using automatic login</li>
-                <li>Set your password by navigating to your <a href="<?php _e($profile_url) ?>">profile</a></li>
-                <li>Re-add your domain</li>
-            </ul>
-            <p>Upon completion you should be able to log in to your WordPress site.</p>
-            <p><a href="<?php _e($insecure_domain_wiki_url) ?>" target="_new">Read more</a></p>
+          <h2>Jumpstarter auto login disabled</h2>
+          <p>We are all about security and don't want to send your password over an insecure connection. You can still login with your username and password below.</p>
+          <p>If you haven't set any password yet, please click on the learn more link below</p>
+          <p style="text-align: center;"><a href="#" id="js-auth-learn-more">Learn more &raquo;</a></p>
+          <br/>
+          <div id="js-insecure-domain-learn-more" style="display: none;">
+              <hr/>
+              <br/>
+              <h3>Why is this connection insecure?</h3>
+              <p>Most likely you've added a custom domain to your site. We do not support the possibility to add SSL certificates yet, but we're working on it.</p>
+              <br/>
+              <h3>I don't have a password for my site yet.</h3>
+              <p>Click the link below and we'll send a "reset password" link to the email you used for signing up to Jumpstarter.</p>
+              <br/>
+              <br/>
+              <div style="width: 34%; margin-left: auto; margin-right: auto;">
+                <div style="float: left;">
+                  <a id="js-insecure-domain-btn-send" class="button button-primary button-large" style="float: none;">Get password email</a>
+                </div>
+                <div style="float: left;">
+                  <div id="js-insecure-domain-spinner" class="js-spinner" style="float: right; margin-left: 10px; margin-top: 7px; display: none;"></div>
+                </div>
+                <div style="display: block; clear: both;"></div>
+              </div>
+              <div id="js-insecure-reset-ok" class="js-err">
+                <br/>
+                <p>A reset password link has been sent to your registered Jumpstarter email. Check your inbox for a password reset link.</p>
+              </div>
+              <div id="js-insecure-reset-err-too-often" class="js-err">
+                <br/>
+                <p>Please slow down. There is no point in clicking this button several times.</p>
+              </div>
+              <div id="js-insecure-reset-err-gen" class="js-err"><br/><p></p></div>
+          </div>
         </div>
         <?php
         endif;
@@ -119,6 +139,7 @@ add_action("login_form_login", function() {
         js_register("script", "jswp-get-params", "jswp-get-params.js", false);
         js_enqueue("script", "jswp-login", "jswp-login.js", array("jquery", "jswp-get-params"));
         js_enqueue("style", "jswp-login-css", "jswp-login.css", false);
+        wp_localize_script( "jswp-login", "reset_ajax", array("url" => admin_url("admin-ajax.php")));
     });
 });
 
@@ -147,4 +168,107 @@ call_user_func(function() {
             exit();
         }
     }
+});
+
+function js_perform_rest_call($url, $method, $data = null, $ignore_ssl_verification = false) {
+    $ch = curl_init();
+    switch ($method) {
+    case "POST": {
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        if ($data) {
+            $json_data = json_encode($data);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $json_data);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                "content-type: application/json",
+                "content-length: " . strlen($json_data)
+            ));
+        }
+        break;
+    } case "GET": {
+        if ($data) {
+            $url = sprintf("%s?%s", $url, http_build_query($data));
+        }
+        break;
+    } default: {
+        return false;
+    }}
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    if ($ignore_ssl_verification === true) {
+        // This is needed when curling to the development api.
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+    }
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
+/// Ajax action for non authenticated users to send a reset
+/// password link via the Jumpstarter API.
+add_action("wp_ajax_nopriv_js_send_reset_email", function() {
+    global $wpdb;
+    // Check latest reset request time.
+    $last_reset_req_at = get_option("js_pwd_reset_req");
+    // Update the reset request every time. Don't allow spamming.
+    update_option("js_pwd_reset_req", time(), false);
+    if ($last_reset_req_at !== false) {
+        // Validate req time here. Should not be too often.
+        $when = intval($last_reset_req_at);
+        if ($when > (time() - 60 * 3)) {
+            echo json_encode(array(
+                "status" => "fail-too-often"
+            ));
+            wp_die();
+        }
+    }
+    // Build api address.
+    $ignore_ssl_verification = false;
+    $parsed_login_url = parse_url(js_env_get_value("ident.user.login_url"));
+    if ($parsed_login_url["scheme"] !== "https") {
+        echo json_encode(array(
+            "status" => "fail",
+            "err_msg" => "Invalid url scheme. Only HTTPS is supported for api communication."
+        ));
+        wp_die();
+    }
+    $api_addr = $parsed_login_url["scheme"] . "://";
+    $api_addr .= $parsed_login_url["host"];
+    if (isset($parsed_login_url["port"])) {
+        // If port is specified it means that we're running in Jumpstarter
+        // dev environment.
+        $api_addr .= ":" . $parsed_login_url["port"];
+        $ignore_ssl_verification = true;
+    }
+    $api_addr .= "/api/v1/instance/send-reset-password";
+    // Create a reset hash.
+    // This follows the procedure in wp-login.php:277 retrieve_password()
+    require_once(ABSPATH . WPINC . "/class-phpass.php");
+    $hasher = new PasswordHash(8, true);
+    $reset_key = wp_generate_password(20, false);
+    $reset_hash = time() . ':' . $hasher->HashPassword($reset_key);
+    $wpdb->update($wpdb->users, array("user_activation_key" => $reset_hash), array("user_login" => "admin"));
+    // Create the reset address.
+    $reset_addr = network_site_url("wp-login.php?action=rp&key=$reset_key&login=admin");
+    // Generate a token that the Jumpstarter api can use to validate the request.
+    $auth_token = js_env_token_auth_generate();
+    // Compile an api request and send it.
+    $post_data = array(
+        "id" => js_env_get_value("ident.container.id"),
+        "token" => $auth_token,
+        "url" => $reset_addr
+    );
+    $rest_res = js_perform_rest_call($api_addr, "POST", $post_data, true);
+    if (is_string($rest_res)) {
+        // Response is text representation of json.
+        echo $rest_res;
+    } else {
+        // The response is erroneous. We didn't get a json string back from
+        // the api. Anything could be wrong. Respond with an error.
+        echo json_encode(array(
+            "status" => "fail",
+            "err_msg" => "Could not communicate with the api"
+        ));
+    }
+    wp_die();
 });

@@ -30,3 +30,15 @@
 #js-login a.disabled {
     color: #ff3333;
 }
+
+#js-insecure-domain div .js-spinner {
+    background-image: url("../img/spinner-2x.gif");
+    height: 16px;
+    width: 16px;
+    background-size: contain;
+    background-position: center center;
+}
+
+div .js-err {
+    display: none;
+}
