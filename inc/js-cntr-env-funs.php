@@ -95,7 +95,6 @@ add_action("login_form_login", function() {
             <br/><br/>
             <a id="js-login-reflected" target="_parent" href="<?php _e($login_url) ?>">Login with Jumpstarter</a>
         </div>
-        <?php if (true): ?>
         <div id="js-insecure-domain" style="display: none;">
           <h2>Jumpstarter auto login disabled</h2>
           <p>We are all about security and don't want to send your password over an insecure connection. You can still login with your username and password below.</p>
@@ -132,9 +131,6 @@ add_action("login_form_login", function() {
               <div id="js-insecure-reset-err-gen" class="js-err"><br/><p></p></div>
           </div>
         </div>
-        <?php
-        endif;
-        ?>
         <?php
         js_register("script", "jswp-get-params", "jswp-get-params.js", false);
         js_enqueue("script", "jswp-login", "jswp-login.js", array("jquery", "jswp-get-params"));
