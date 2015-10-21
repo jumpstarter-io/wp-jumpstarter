@@ -5,7 +5,7 @@
  * Description: Jumpstarter WordPress integration plugin that simplifies running WordPress in a container environment.
  * Plugin Name: Jumpstarter
  * Plugin URI: https://github.com/jumpstarter-io/wp-jumpstarter
- * Version: 19.1
+ * Version: 19.2
  * License: Unlicense
  * License URI: http://unlicense.org
  */
